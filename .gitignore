@@ -1,10 +1,6 @@
 # Dependencies
 node_modules/
 
-# Next.js
-frontend/.next/
-frontend/out/
-
 # Environment variables
 .env
 .env.local
