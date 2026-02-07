@@ -8,7 +8,14 @@ export default function Username() {
   return (
     <div>
       <h1>Username</h1>
-      <button onClick={() => router.push("/onboarding/2.employment")}>
+
+      <input
+        type="text"
+        placeholder="Enter a username"
+        maxLength={25}
+      />
+
+      <button onClick={() => router.push("/onboarding/2.employment-goals")}>
         Next
       </button>
     </div>
