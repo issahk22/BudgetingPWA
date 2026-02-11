@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer
+from sqlalchemy import Column, String, Integer, Numeric
 import uuid
 
 from database import Base
@@ -13,3 +13,25 @@ class User(Base):
     username = Column(String, nullable=False, unique=True)
 
     pin = Column(Integer, nullable=True)
+
+
+class BankAccount(Base):
+    __tablename__ = "bank_accounts"
+
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    account_name = Column(String, nullable=False)
+
+    balance = Column(Numeric(12, 2), nullable=False)     #numeric(12, 2) for max 2 decimal places
+
+
+class Pot(Base):
+    __tablename__ = "pots"
+
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    pot_name = Column(String, nullable=False)
+
+    balance = Column(Numeric(12, 2), nullable=False)
