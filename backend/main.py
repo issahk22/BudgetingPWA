@@ -1,11 +1,11 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 
 from database import Base, engine, get_db
 from models import User, BankAccount, Pot
-from schemas import (
-    UserCreate, UserResponse,
+from schemas import (UserCreate, UserResponse,
     BankAccountCreate, BankAccountUpdate, BankAccountResponse,
     PotCreate, PotUpdate, PotResponse,
 )
@@ -14,6 +14,14 @@ from schemas import (
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+# allows the frontend (localhost:3000) to make requests to the backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 
