@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 
 
 from database import Base, engine, get_db
-from models import User, BankAccount, Pot
+from models import User, BankAccount, Pot, FixedCost
 from schemas import (UserCreate, UserResponse,
     BankAccountCreate, BankAccountUpdate, BankAccountResponse,
     PotCreate, PotUpdate, PotResponse,
+    FixedCostCreate, FixedCostUpdate, FixedCostResponse,
 )
 
 # creates tables in db if they don't exist already
@@ -15,13 +16,14 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# allows the frontend (localhost:3000) to make requests to the backend
+# allows the frontend to make requests to the backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 
@@ -130,7 +132,6 @@ def update_pot(pot_id: str, updates: PotUpdate, db: Session = Depends(get_db)):
     if not pot:
         raise HTTPException(status_code=404, detail="Pot not found")
 
-    #only update fields that were  provided in the request
     if updates.pot_name is not None:
         pot.pot_name = updates.pot_name
     if updates.balance is not None:
@@ -153,3 +154,62 @@ def delete_pot(pot_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"detail": "Pot deleted"}
+
+
+
+
+##-----Fixed Cost Routes-----##
+
+@app.post("/fixed-costs", response_model=FixedCostResponse)
+def create_fixed_cost(cost: FixedCostCreate, db: Session = Depends(get_db)):
+
+    new_cost = FixedCost(**cost.model_dump())
+    db.add(new_cost)
+    db.commit()
+    db.refresh(new_cost)
+
+    return new_cost
+
+
+
+@app.get("/fixed-costs", response_model=list[FixedCostResponse])
+def get_fixed_costs(db: Session = Depends(get_db)):
+
+    return db.query(FixedCost).all()
+
+
+@app.put("/fixed-costs/{cost_id}", response_model=FixedCostResponse)
+def update_fixed_cost(cost_id: str, updates: FixedCostUpdate, db: Session = Depends(get_db)):
+
+    cost = db.query(FixedCost).filter(FixedCost.id == cost_id).first()
+    if not cost:
+        raise HTTPException(status_code=404, detail="Fixed cost not found")
+
+
+
+    if updates.cost_name is not None:
+        cost.cost_name = updates.cost_name
+    if updates.amount is not None:
+        cost.amount = updates.amount
+    if updates.paid is not None:
+        cost.paid = updates.paid
+
+    db.commit()
+    db.refresh(cost)
+
+    return cost
+
+
+
+
+@app.delete("/fixed-costs/{cost_id}")
+def delete_fixed_cost(cost_id: str, db: Session = Depends(get_db)):
+
+    cost = db.query(FixedCost).filter(FixedCost.id == cost_id).first()
+    if not cost:
+        raise HTTPException(status_code=404, detail="Fixed cost not found")
+
+    db.delete(cost)
+    db.commit()
+
+    return {"detail": "Fixed cost deleted"}

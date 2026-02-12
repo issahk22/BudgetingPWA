@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from decimal import Decimal
 
 
+#Defines the api request and responses, what gets sent back
+
 
 ##       User Schemas         ##
 
@@ -52,5 +54,29 @@ class PotResponse(BaseModel):
     id: str
     pot_name: str
     balance: Decimal
+    class Config:
+        from_attributes = True
+
+
+
+
+##-----Fixed Cost Schemas-----##
+
+
+class FixedCostCreate(BaseModel):
+    cost_name: str
+    amount: Decimal
+    paid: bool = False
+
+class FixedCostUpdate(BaseModel):
+    cost_name: str | None = None
+    amount: Decimal | None = None
+    paid: bool | None = None
+
+class FixedCostResponse(BaseModel):
+    id: str
+    cost_name: str
+    amount: Decimal
+    paid: bool
     class Config:
         from_attributes = True
