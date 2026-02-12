@@ -28,6 +28,13 @@ app.add_middleware(
 
 
 
+#omboarding complete check
+@app.get("/onboarding-status")
+def onboarding_status(db: Session = Depends(get_db)):
+    user = db.query(User).first()
+    return {"completed": user is not None}
+
+
 @app.post("/users", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
