@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 
 
 from database import Base, engine, get_db
-from models import User, BankAccount, Pot, FixedCost
+from models import User, BankAccount, Pot, FixedCost, Envelope
 from schemas import (UserCreate, UserResponse,
     BankAccountCreate, BankAccountUpdate, BankAccountResponse,
     PotCreate, PotUpdate, PotResponse,
+    EnvelopeCreate, EnvelopeUpdate, EnvelopeResponse,
     FixedCostCreate, FixedCostUpdate, FixedCostResponse,
 )
 
@@ -23,7 +24,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 
 
@@ -158,6 +158,9 @@ def delete_pot(pot_id: str, db: Session = Depends(get_db)):
 
 
 
+
+
+
 ##-----Fixed Cost Routes-----##
 
 @app.post("/fixed-costs", response_model=FixedCostResponse)
@@ -201,7 +204,6 @@ def update_fixed_cost(cost_id: str, updates: FixedCostUpdate, db: Session = Depe
 
 
 
-
 @app.delete("/fixed-costs/{cost_id}")
 def delete_fixed_cost(cost_id: str, db: Session = Depends(get_db)):
 
@@ -213,3 +215,56 @@ def delete_fixed_cost(cost_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"detail": "Fixed cost deleted"}
+
+
+
+
+
+##-----Envelope Routes-----##
+
+@app.post("/envelopes", response_model=EnvelopeResponse)
+def create_envelope(envelope: EnvelopeCreate, db: Session = Depends(get_db)):
+
+    new_envelope = Envelope(**envelope.model_dump())
+    db.add(new_envelope)
+    db.commit()
+    db.refresh(new_envelope)
+
+    return new_envelope
+
+
+@app.get("/envelopes", response_model=list[EnvelopeResponse])
+def get_envelopes(db: Session = Depends(get_db)):
+
+    return db.query(Envelope).all()
+
+
+@app.put("/envelopes/{envelope_id}", response_model=EnvelopeResponse)
+def update_envelope(envelope_id: str, updates: EnvelopeUpdate, db: Session = Depends(get_db)):
+
+    envelope = db.query(Envelope).filter(Envelope.id == envelope_id).first()
+    if not envelope:
+        raise HTTPException(status_code=404, detail="Envelope not found")
+
+    if updates.envelope_name is not None:
+        envelope.envelope_name = updates.envelope_name
+    if updates.allocated_amount is not None:
+        envelope.allocated_amount = updates.allocated_amount
+
+    db.commit()
+    db.refresh(envelope)
+
+    return envelope
+
+
+@app.delete("/envelopes/{envelope_id}")
+def delete_envelope(envelope_id: str, db: Session = Depends(get_db)):
+
+    envelope = db.query(Envelope).filter(Envelope.id == envelope_id).first()
+    if not envelope:
+        raise HTTPException(status_code=404, detail="Envelope not found")
+
+    db.delete(envelope)
+    db.commit()
+
+    return {"detail": "Envelope deleted"}

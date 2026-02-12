@@ -39,6 +39,7 @@ class Pot(Base):
     balance = Column(Numeric(12, 2), nullable=False)
 
 
+
 class FixedCost(Base):
     __tablename__ = "fixed_costs"
 
@@ -51,3 +52,16 @@ class FixedCost(Base):
 
     # whether this cost has been paid for the current month, defaults to false
     paid = Column(Boolean, nullable=False, default=False)
+
+
+
+
+class Envelope(Base):
+    __tablename__ = "envelopes"
+
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    envelope_name = Column(String, nullable=False)
+
+    allocated_amount = Column(Numeric(12, 2), nullable=False)     

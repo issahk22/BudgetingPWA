@@ -80,3 +80,25 @@ class FixedCostResponse(BaseModel):
     paid: bool
     class Config:
         from_attributes = True
+
+
+
+##-----Envelope Schemas-----##
+
+class EnvelopeCreate(BaseModel):
+    envelope_name: str
+    allocated_amount: Decimal
+
+class EnvelopeUpdate(BaseModel):
+    envelope_name: str | None = None
+    allocated_amount: Decimal | None = None
+
+class EnvelopeResponse(BaseModel):
+    id: str
+    envelope_name: str
+    allocated_amount: Decimal
+    class Config:
+        from_attributes = True
+
+
+
