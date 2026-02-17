@@ -98,6 +98,7 @@ class EnvelopeResponse(BaseModel):
     id: str
     envelope_name: str
     allocated_amount: Decimal
+    balance: Decimal
     class Config:
         from_attributes = True
 

@@ -64,7 +64,10 @@ class Envelope(Base):
 
     envelope_name = Column(String, nullable=False)
 
+
     allocated_amount = Column(Numeric(12, 2), nullable=False)
+
+    balance = Column(Numeric(12, 2), nullable=False)
 
 
 class Goal(Base):

@@ -235,7 +235,8 @@ def delete_fixed_cost(cost_id: str, db: Session = Depends(get_db)):
 @app.post("/envelopes", response_model=EnvelopeResponse)
 def create_envelope(envelope: EnvelopeCreate, db: Session = Depends(get_db)):
 
-    new_envelope = Envelope(**envelope.model_dump())
+    # balance starts equal to allocated amount on creation
+    new_envelope = Envelope(**envelope.model_dump(), balance=envelope.allocated_amount)
     db.add(new_envelope)
     db.commit()
     db.refresh(new_envelope)
@@ -247,6 +248,8 @@ def create_envelope(envelope: EnvelopeCreate, db: Session = Depends(get_db)):
 def get_envelopes(db: Session = Depends(get_db)):
 
     return db.query(Envelope).all()
+
+
 
 
 @app.put("/envelopes/{envelope_id}", response_model=EnvelopeResponse)
@@ -265,6 +268,8 @@ def update_envelope(envelope_id: str, updates: EnvelopeUpdate, db: Session = Dep
     db.refresh(envelope)
 
     return envelope
+
+
 
 
 @app.delete("/envelopes/{envelope_id}")
@@ -346,8 +351,8 @@ def create_transaction(transaction: TransactionCreate, db: Session = Depends(get
     if not envelope:
         raise HTTPException(status_code=404, detail="Envelope not found")
 
-    # deduct the transaction amount from the envelope balance
-    envelope.allocated_amount = envelope.allocated_amount - transaction.amount
+    # deduct from balance only — allocated_amount stays fixed as the original budget
+    envelope.balance = envelope.balance - transaction.amount
 
     # save the transaction record
     new_transaction = Transaction(**transaction.model_dump())
@@ -401,10 +406,10 @@ def delete_transaction(transaction_id: str, db: Session = Depends(get_db)):
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
-    # restore the amount back to the envelope when a transaction is deleted
+    # restore the amount back to balance when a transaction is deleted
     envelope = db.query(Envelope).filter(Envelope.id == transaction.envelope_id).first()
     if envelope:
-        envelope.allocated_amount = envelope.allocated_amount + transaction.amount
+        envelope.balance = envelope.balance + transaction.amount
 
     db.delete(transaction)
     db.commit()
