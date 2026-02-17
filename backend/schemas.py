@@ -124,3 +124,29 @@ class GoalResponse(BaseModel):
         from_attributes = True
 
 
+
+
+##-----Transaction Schemas-----##
+
+class TransactionCreate(BaseModel):
+    envelope_id: str
+    amount: Decimal
+    description: str | None = None
+    date: str | None = None
+
+class TransactionUpdate(BaseModel):
+    description: str | None = None
+    date: str | None = None
+
+class TransactionResponse(BaseModel):
+    id: str
+    envelope_id: str
+    amount: Decimal
+    description: str | None
+    date: str | None
+    class Config:
+        from_attributes = True
+
+
+
+

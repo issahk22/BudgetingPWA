@@ -4,12 +4,13 @@ from sqlalchemy.orm import Session
 
 
 from database import Base, engine, get_db
-from models import User, BankAccount, Pot, FixedCost, Envelope, Goal
+from models import User, BankAccount, Pot, FixedCost, Envelope, Transaction, Goal
 from schemas import (UserCreate, UserResponse,
     BankAccountCreate, BankAccountUpdate, BankAccountResponse,
     PotCreate, PotUpdate, PotResponse,
     EnvelopeCreate, EnvelopeUpdate, EnvelopeResponse,
     FixedCostCreate, FixedCostUpdate, FixedCostResponse,
+    TransactionCreate, TransactionUpdate, TransactionResponse,
     GoalCreate, GoalUpdate, GoalResponse,
 )
 
@@ -229,11 +230,6 @@ def delete_fixed_cost(cost_id: str, db: Session = Depends(get_db)):
 
 
 
-
-
-
-
-
 ##-----Envelope Routes-----##
 
 @app.post("/envelopes", response_model=EnvelopeResponse)
@@ -335,4 +331,86 @@ def delete_goal(goal_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"detail": "Goal deleted"}
+
+
+
+
+
+##-----Transaction Routes-----##
+
+@app.post("/transactions", response_model=TransactionResponse)
+def create_transaction(transaction: TransactionCreate, db: Session = Depends(get_db)):
+
+    # find the envelope the transaction belongs to
+    envelope = db.query(Envelope).filter(Envelope.id == transaction.envelope_id).first()
+    if not envelope:
+        raise HTTPException(status_code=404, detail="Envelope not found")
+
+    # deduct the transaction amount from the envelope balance
+    envelope.allocated_amount = envelope.allocated_amount - transaction.amount
+
+    # save the transaction record
+    new_transaction = Transaction(**transaction.model_dump())
+    db.add(new_transaction)
+
+    # commit transaction and the updated envelope balance
+    db.commit()
+    db.refresh(new_transaction)
+
+    return new_transaction
+
+
+
+
+
+# get all transactions for a specific envelope
+@app.get("/transactions/envelope/{envelope_id}", response_model=list[TransactionResponse])
+def get_transactions_by_envelope(envelope_id: str, db: Session = Depends(get_db)):
+
+    return db.query(Transaction).filter(Transaction.envelope_id == envelope_id).all()
+
+
+
+
+
+@app.put("/transactions/{transaction_id}", response_model=TransactionResponse)
+def update_transaction(transaction_id: str, updates: TransactionUpdate, db: Session = Depends(get_db)):
+
+    transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    # only description and date can be updated
+    if updates.description is not None:
+        transaction.description = updates.description
+    if updates.date is not None:
+        transaction.date = updates.date
+
+    db.commit()
+    db.refresh(transaction)
+
+    return transaction
+
+
+
+
+@app.delete("/transactions/{transaction_id}")
+def delete_transaction(transaction_id: str, db: Session = Depends(get_db)):
+
+    transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    # restore the amount back to the envelope when a transaction is deleted
+    envelope = db.query(Envelope).filter(Envelope.id == transaction.envelope_id).first()
+    if envelope:
+        envelope.allocated_amount = envelope.allocated_amount + transaction.amount
+
+    db.delete(transaction)
+    db.commit()
+
+    return {"detail": "Transaction deleted"}
+
+
+
 

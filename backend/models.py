@@ -78,3 +78,22 @@ class Goal(Base):
     current_savings = Column(Numeric(12, 2), nullable=True)  #optional
 
     deadline = Column(String, nullable=True)
+
+
+
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+
+
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    envelope_id = Column(String, nullable=False)
+
+    amount = Column(Numeric(12, 2), nullable=False)
+
+    description = Column(String, nullable=True)
+
+    date = Column(String, nullable=True)
+
