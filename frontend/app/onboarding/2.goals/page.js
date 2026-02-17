@@ -25,8 +25,8 @@ export default function Goals() {
             placeholder="0.00"
             min="0"
             step="0.01"
-            value={data.savingsGoal}
-            onChange={(e) => update({ savingsGoal: e.target.value })}
+            value={data.goal}
+            onChange={(e) => update({ goal: e.target.value })}
 
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -55,8 +55,8 @@ export default function Goals() {
             Deadline</label>
           <input
             type="date"
-            value={data.savingsDeadline}
-            onChange={(e) => update({ savingsDeadline: e.target.value })}
+            value={data.goalDeadline}
+            onChange={(e) => update({ goalDeadline: e.target.value })}
 
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />

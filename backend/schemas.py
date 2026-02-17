@@ -83,6 +83,7 @@ class FixedCostResponse(BaseModel):
 
 
 
+
 ##-----Envelope Schemas-----##
 
 class EnvelopeCreate(BaseModel):
@@ -100,5 +101,26 @@ class EnvelopeResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+
+##-----Goal Schemas-----##
+
+class GoalCreate(BaseModel):
+    target_amount: Decimal
+    current_savings: Decimal | None = None
+    deadline: str | None = None
+
+class GoalUpdate(BaseModel):
+    target_amount: Decimal | None = None
+    current_savings: Decimal | None = None
+    deadline: str | None = None
+
+class GoalResponse(BaseModel):
+    id: str
+    target_amount: Decimal
+    current_savings: Decimal | None
+    deadline: str | None
+    class Config:
+        from_attributes = True
 
 

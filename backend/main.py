@@ -4,12 +4,13 @@ from sqlalchemy.orm import Session
 
 
 from database import Base, engine, get_db
-from models import User, BankAccount, Pot, FixedCost, Envelope
+from models import User, BankAccount, Pot, FixedCost, Envelope, Goal
 from schemas import (UserCreate, UserResponse,
     BankAccountCreate, BankAccountUpdate, BankAccountResponse,
     PotCreate, PotUpdate, PotResponse,
     EnvelopeCreate, EnvelopeUpdate, EnvelopeResponse,
     FixedCostCreate, FixedCostUpdate, FixedCostResponse,
+    GoalCreate, GoalUpdate, GoalResponse,
 )
 
 # creates tables in db if they don't exist already
@@ -50,6 +51,8 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)  # refreshes so that the id is populated instead of keeping it none.
 
     return new_user
+
+
 
 
 
@@ -227,6 +230,10 @@ def delete_fixed_cost(cost_id: str, db: Session = Depends(get_db)):
 
 
 
+
+
+
+
 ##-----Envelope Routes-----##
 
 @app.post("/envelopes", response_model=EnvelopeResponse)
@@ -275,3 +282,57 @@ def delete_envelope(envelope_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"detail": "Envelope deleted"}
+
+
+
+##-----Goal Routes-----##
+
+@app.post("/goals", response_model=GoalResponse)
+def create_goal(goal: GoalCreate, db: Session = Depends(get_db)):
+
+    new_goal = Goal(**goal.model_dump())
+    db.add(new_goal)
+    db.commit()
+    db.refresh(new_goal)
+
+    return new_goal
+
+
+@app.get("/goals", response_model=list[GoalResponse])
+def get_goals(db: Session = Depends(get_db)):
+
+    return db.query(Goal).all()
+
+
+@app.put("/goals/{goal_id}", response_model=GoalResponse)
+def update_goal(goal_id: str, updates: GoalUpdate, db: Session = Depends(get_db)):
+
+    goal = db.query(Goal).filter(Goal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+
+    if updates.target_amount is not None:
+        goal.target_amount = updates.target_amount
+    if updates.current_savings is not None:
+        goal.current_savings = updates.current_savings
+    if updates.deadline is not None:
+        goal.deadline = updates.deadline
+
+    db.commit()
+    db.refresh(goal)
+
+    return goal
+
+
+@app.delete("/goals/{goal_id}")
+def delete_goal(goal_id: str, db: Session = Depends(get_db)):
+
+    goal = db.query(Goal).filter(Goal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+
+    db.delete(goal)
+    db.commit()
+
+    return {"detail": "Goal deleted"}
+

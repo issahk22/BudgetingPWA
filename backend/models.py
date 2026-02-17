@@ -64,4 +64,17 @@ class Envelope(Base):
 
     envelope_name = Column(String, nullable=False)
 
-    allocated_amount = Column(Numeric(12, 2), nullable=False)     
+    allocated_amount = Column(Numeric(12, 2), nullable=False)
+
+
+class Goal(Base):
+    __tablename__ = "goals"
+
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    target_amount = Column(Numeric(12, 2), nullable=False)
+
+    current_savings = Column(Numeric(12, 2), nullable=True)  #optional
+
+    deadline = Column(String, nullable=True)
