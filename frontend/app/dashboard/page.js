@@ -10,6 +10,7 @@ export default function Dashboard() {
 
   const [bankAccounts, setBankAccounts] = useState([]);
   const [pots, setPots] = useState([]);
+  const [envelopes, setEnvelopes] = useState([]);
   // Loading added in case of API delays so user does not see incorrect info
   const [loading, setLoading] = useState(true);
 
@@ -20,17 +21,20 @@ export default function Dashboard() {
     async function fetchData() {
 
       try {
-        // Runs both requests simultaneously
-        const [accountsRes, potsRes] = await Promise.all([
+        // Runs all requests simultaneously
+        const [accountsRes, potsRes, envelopesRes] = await Promise.all([
           fetch(`${API}/bank-accounts`),
           fetch(`${API}/pots`),
+          fetch(`${API}/envelopes`),
         ]);
 
         const accountsData = await accountsRes.json();
         const potsData = await potsRes.json();
+        const envelopesData = await envelopesRes.json();
 
         setBankAccounts(accountsData);
         setPots(potsData);
+        setEnvelopes(envelopesData);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
       } finally {
@@ -105,6 +109,30 @@ export default function Dashboard() {
             </ul>
           )}
         </div>
+
+
+
+        {/* Envelopes */}
+
+        <div style={{ border: "1px solid #ccc", padding: "16px", minWidth: "200px" }}>
+          <h2>Envelopes</h2>
+
+          {envelopes.length === 0 ? (
+            <p>No envelopes found.</p>
+          ) : (
+            <ul style={{ listStyle: "none", padding: 0 }}>
+              {envelopes.map((env) => (
+                <li key={env.id} style={{ marginBottom: "12px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>{env.envelope_name}</span>
+                    <span>£{parseFloat(env.balance).toFixed(2)} / £{parseFloat(env.allocated_amount).toFixed(2)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
       </div>
     </div>
   );

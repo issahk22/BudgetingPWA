@@ -89,7 +89,7 @@ export default function Accounts() {
           {/* list of added accounts with remove buttons */}
           {data.bankAccounts.map((acc, i) => (
             <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-gray-100">
-              <span>{acc.name} — £{acc.balance}</span>
+              <span>{acc.name}: £{acc.balance}</span>
               <button onClick={() => removeAccount(i)} className="text-red-500 text-xs">Remove</button>
             </div>
           ))}
@@ -134,7 +134,7 @@ export default function Accounts() {
           {/* list of added pots with remove buttons */}
           {data.pots.map((pot, i) => (
             <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-gray-100">
-              <span>{pot.name} — £{pot.balance}</span>
+              <span>{pot.name}: £{pot.balance}</span>
               <button onClick={() => removePot(i)} className="text-red-500 text-xs">Remove</button>
             </div>
           ))}

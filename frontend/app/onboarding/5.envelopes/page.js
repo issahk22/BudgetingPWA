@@ -141,7 +141,7 @@ export default function Envelopes() {
         {/* list of added envelopes with delete buttons */}
         {data.envelopes.map((env, i) => (
           <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-gray-100">
-            <span>{env.name} — £{env.amount}</span>
+            <span>{env.name}: £{env.amount}</span>
             <button onClick={() => removeEnvelope(i)} className="text-red-500 text-xs">Remove</button>
           </div>
         ))}

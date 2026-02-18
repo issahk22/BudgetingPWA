@@ -71,7 +71,7 @@ export default function Costs() {
         {/* list of added costs with remove buttons */}
         {data.fixedCosts.map((cost, i) => (
           <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-gray-100">
-            <span>{cost.name} — £{cost.amount}{cost.paid && <span className="text-green-600 ml-1">(paid)</span>}</span>
+            <span>{cost.name}: £{cost.amount}{cost.paid && <span className="text-green-600 ml-1">(paid)</span>}</span>
             <button onClick={() => removeCost(i)} className="text-red-500 text-xs">Remove</button>
           </div>
         ))}

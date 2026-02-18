@@ -35,7 +35,7 @@ export default function Goals() {
         <div className="mb-4">
 
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Current Savings (£) <span className="text-gray-400 font-normal">— optional</span>
+            Current Savings (£) <span className="text-gray-400 font-normal">(optional)</span>
           </label>
           <input
             type="number"
