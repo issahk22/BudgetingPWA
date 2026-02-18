@@ -14,6 +14,21 @@ export default function Envelopes() {
 
 
 
+  const totalBudget = data.bankAccounts.reduce(
+    (sum, acc) => sum + (parseFloat(acc.balance) || 0),
+    0
+  );
+
+  const totalAllocated = data.envelopes.reduce(
+    (sum, env) => sum + (parseFloat(env.amount) || 0),
+    0
+  );
+
+  const amntRemaining = totalBudget - totalAllocated;
+
+
+
+
 
   function addEnvelope() {
     if (!input.name) return;
@@ -107,6 +122,16 @@ export default function Envelopes() {
          className="text-2xl font-semibold text-gray-800 mb-6">
         Envelopes
           </h1>
+
+
+
+        <div className="mb-5 p-3 rounded bg-gray-50 border border-gray-200 text-sm flex justify-between">
+          <span className="text-gray-500">Total budget: £{totalBudget.toFixed(2)}</span>
+          <span className={amntRemaining < 0 ? "font-semibold text-red-600" : "font-semibold text-green-600"}>
+            Left to budget: £{amntRemaining.toFixed(2)}
+          </span>
+        </div>
+
 
 
         <div className="flex gap-2 mb-3">
