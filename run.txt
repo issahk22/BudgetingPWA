@@ -1,0 +1,2 @@
+python -m uvicorn main:app --reload in backend
+npm run dev in frontend 
