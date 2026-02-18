@@ -11,6 +11,8 @@ export default function Dashboard() {
   const [bankAccounts, setBankAccounts] = useState([]);
   const [pots, setPots] = useState([]);
   const [envelopes, setEnvelopes] = useState([]);
+  const [fixedCosts, setFixedCosts] = useState([]);
+
   // Loading added in case of API delays so user does not see incorrect info
   const [loading, setLoading] = useState(true);
 
@@ -22,19 +24,22 @@ export default function Dashboard() {
 
       try {
         // Runs all requests simultaneously
-        const [accountsRes, potsRes, envelopesRes] = await Promise.all([
+        const [accountsRes, potsRes, envelopesRes, fixedCostsRes] = await Promise.all([
           fetch(`${API}/bank-accounts`),
           fetch(`${API}/pots`),
           fetch(`${API}/envelopes`),
+          fetch(`${API}/fixed-costs`),
         ]);
 
         const accountsData = await accountsRes.json();
         const potsData = await potsRes.json();
         const envelopesData = await envelopesRes.json();
+        const fixedCostsData = await fixedCostsRes.json();
 
         setBankAccounts(accountsData);
         setPots(potsData);
         setEnvelopes(envelopesData);
+        setFixedCosts(fixedCostsData);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
       } finally {
@@ -53,6 +58,53 @@ export default function Dashboard() {
   );
 
 
+  async function handlePaidToggle(cost) {
+    const newPaid = !cost.paid;
+    const amount = parseFloat(cost.amount);
+
+    // Update fixed cost "paid?" status
+    await fetch(`${API}/fixed-costs/${cost.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paid: newPaid }),
+    });
+
+
+    //adjust the first bank account balance accordingly. WILL NEED TO BE CHANGED LATER. 
+
+    if (bankAccounts.length > 0) {
+      const account = bankAccounts[0];
+      const currentBalance = parseFloat(account.balance);
+      //maths logic. if user marks as paid, amount will be deducted from bank account
+      const newBalance = newPaid
+        ? currentBalance - amount
+        : currentBalance + amount;
+
+      await fetch(`${API}/bank-accounts/${account.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ balance: newBalance }),
+      });
+
+
+
+      setBankAccounts((prev) =>
+        prev.map((acc) =>
+          acc.id === account.id ? { ...acc, balance: newBalance } : acc
+        )
+      );
+    }
+
+
+    setFixedCosts((prev) =>
+      prev.map((c) => (c.id === cost.id ? { ...c, paid: newPaid } : c))
+    );
+
+
+  
+  }
+
+
   if (loading) {
     return (
       <div>
@@ -68,7 +120,7 @@ export default function Dashboard() {
     <div style={{ padding: "20px" }}>
       <h1>Dashboard</h1>
 
-      <div style={{ display: "flex", gap: "40px", marginTop: "20px" }}>
+      <div style={{ display: "flex", gap: "40px", marginTop: "20px", flexWrap: "wrap" }}>
 
         {/* Bank Accounts */}
 
@@ -127,6 +179,36 @@ export default function Dashboard() {
                     <span>{env.envelope_name}</span>
                     <span>£{parseFloat(env.balance).toFixed(2)} / £{parseFloat(env.allocated_amount).toFixed(2)}</span>
                   </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+
+
+
+        {/* Monthly Fixed Costs */}
+
+        <div style={{ border: "1px solid #ccc", padding: "16px", minWidth: "200px" }}>
+          <h2>Monthly Costs</h2>
+
+          {fixedCosts.length === 0 ? (
+            <p>No fixed costs found.</p>
+          ) : (
+            <ul style={{ listStyle: "none", padding: 0 }}>
+              {fixedCosts.map((cost) => (
+                <li key={cost.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", gap: "16px" }}>
+                  <span>{cost.cost_name}</span>
+                  <span>£{parseFloat(cost.amount).toFixed(2)}</span>
+                  <label style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", whiteSpace: "nowrap" }}>
+                    <input
+                      type="checkbox"
+                      checked={cost.paid}
+                      onChange={() => handlePaidToggle(cost)}
+                    />
+                    Paid?
+                  </label>
                 </li>
               ))}
             </ul>
