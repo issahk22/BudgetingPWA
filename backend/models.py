@@ -100,3 +100,20 @@ class Transaction(Base):
 
     date = Column(String, nullable=True)
 
+
+
+class Transfer(Base):
+    __tablename__ = "transfers"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    from_account_id = Column(String, nullable=False)
+
+    to_account_id = Column(String, nullable=False)
+
+    amount = Column(Numeric(12, 2), nullable=False)
+
+    date = Column(String, nullable=True)
+
+    description = Column(String, nullable=True)
+

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 
 from database import Base, engine, get_db
-from models import User, BankAccount, Pot, FixedCost, Envelope, Transaction, Goal
+from models import User, BankAccount, Pot, FixedCost, Envelope, Transaction, Goal, Transfer
 from schemas import (UserCreate, UserResponse,
     BankAccountCreate, BankAccountUpdate, BankAccountResponse,
     PotCreate, PotUpdate, PotResponse,
@@ -12,6 +12,7 @@ from schemas import (UserCreate, UserResponse,
     FixedCostCreate, FixedCostUpdate, FixedCostResponse,
     TransactionCreate, TransactionUpdate, TransactionResponse,
     GoalCreate, GoalUpdate, GoalResponse,
+    TransferCreate, TransferResponse,
 )
 
 # creates tables in db if they don't exist already
@@ -415,6 +416,42 @@ def delete_transaction(transaction_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"detail": "Transaction deleted"}
+
+
+
+
+##-----Transfer Routes-----##
+
+@app.post("/transfers", response_model=TransferResponse)
+def create_transfer(transfer: TransferCreate, db: Session = Depends(get_db)):
+
+    from_account = db.query(BankAccount).filter(BankAccount.id == transfer.from_account_id).first()
+    if not from_account:
+        raise HTTPException(status_code=404, detail="Source account not found")
+
+    to_account = db.query(BankAccount).filter(BankAccount.id == transfer.to_account_id).first()
+    if not to_account:
+        raise HTTPException(status_code=404, detail="Destination account not found")
+
+    if transfer.from_account_id == transfer.to_account_id:
+        raise HTTPException(status_code=400, detail="Cannot transfer to the same account")
+
+    # deduct from source, add to destination
+    from_account.balance = from_account.balance - transfer.amount
+    to_account.balance = to_account.balance + transfer.amount
+
+    new_transfer = Transfer(**transfer.model_dump())
+    db.add(new_transfer)
+    db.commit()
+    db.refresh(new_transfer)
+
+    return new_transfer
+
+
+@app.get("/transfers", response_model=list[TransferResponse])
+def get_transfers(db: Session = Depends(get_db)):
+
+    return db.query(Transfer).all()
 
 
 

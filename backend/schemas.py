@@ -31,6 +31,7 @@ class BankAccountUpdate(BaseModel):
     balance: Decimal | None = None
 
 class BankAccountResponse(BaseModel):
+    id: str
     account_name: str
     balance: Decimal
     class Config:
@@ -145,6 +146,28 @@ class TransactionResponse(BaseModel):
     amount: Decimal
     description: str | None
     date: str | None
+    class Config:
+        from_attributes = True
+
+
+
+
+##-----Transfer Schemas-----##
+
+class TransferCreate(BaseModel):
+    from_account_id: str
+    to_account_id: str
+    amount: Decimal
+    date: str | None = None
+    description: str | None = None
+
+class TransferResponse(BaseModel):
+    id: str
+    from_account_id: str
+    to_account_id: str
+    amount: Decimal
+    date: str | None
+    description: str | None
     class Config:
         from_attributes = True
 
