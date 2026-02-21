@@ -14,10 +14,10 @@ export default function Envelopes() {
 
 
 
-  const totalBudget = data.bankAccounts.reduce(
-    (sum, acc) => sum + (parseFloat(acc.balance) || 0),
-    0
-  );
+  // only accounts (include_in_budget) are in the amount left to budget
+  const totalBudget = data.accounts
+    .filter((acc) => acc.include_in_budget)
+    .reduce((sum, acc) => sum + (parseFloat(acc.balance) || 0), 0);
 
   const totalAllocated = data.envelopes.reduce(
     (sum, env) => sum + (parseFloat(env.amount) || 0),
@@ -67,21 +67,17 @@ export default function Envelopes() {
         });
       }
 
-      //accounts
-      for (const acc of data.bankAccounts) {
-        await fetch(`${API}/bank-accounts`, {
+      // accounts
+      for (const acc of data.accounts) {
+        await fetch(`${API}/accounts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ account_name: acc.name, balance: parseFloat(acc.balance) || 0 }), //0 added as a fallback 
-        });
-      }
-
-      //  pots 
-      for (const pot of data.pots) {
-        await fetch(`${API}/pots`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pot_name: pot.name, balance: parseFloat(pot.balance) || 0 }), 
+          body: JSON.stringify({
+            account_name: acc.name,
+            balance: parseFloat(acc.balance) || 0,
+            account_type: acc.type,
+            include_in_budget: acc.include_in_budget,
+          }),
         });
       }
 

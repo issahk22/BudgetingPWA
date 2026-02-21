@@ -4,10 +4,9 @@ from sqlalchemy.orm import Session
 
 
 from database import Base, engine, get_db
-from models import User, BankAccount, Pot, FixedCost, Envelope, Transaction, Goal, Transfer
+from models import User, Account, FixedCost, Envelope, Transaction, Goal, Transfer
 from schemas import (UserCreate, UserResponse,
-    BankAccountCreate, BankAccountUpdate, BankAccountResponse,
-    PotCreate, PotUpdate, PotResponse,
+    AccountCreate, AccountUpdate, AccountResponse,
     EnvelopeCreate, EnvelopeUpdate, EnvelopeResponse,
     FixedCostCreate, FixedCostUpdate, FixedCostResponse,
     TransactionCreate, TransactionUpdate, TransactionResponse,
@@ -31,7 +30,7 @@ app.add_middleware(
 
 
 
-#omboarding complete check
+# onboarding complete check
 @app.get("/onboarding-status")
 def onboarding_status(db: Session = Depends(get_db)):
     user = db.query(User).first()
@@ -41,30 +40,27 @@ def onboarding_status(db: Session = Depends(get_db)):
 @app.post("/users", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
-    # check if user already exists
     existing = db.query(User).filter(User.username == user.username).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username already taken")
 
-    # create new user and pushes to db
     new_user = User(username=user.username)
     db.add(new_user)
     db.commit()
-    db.refresh(new_user)  # refreshes so that the id is populated instead of keeping it none.
+    db.refresh(new_user)
 
     return new_user
 
 
 
 
+##-----Account Routes-----##
 
+@app.post("/accounts", response_model=AccountResponse)
 
-##-----Bank Account Routes-----##
+def create_account(account: AccountCreate, db: Session = Depends(get_db)):
 
-@app.post("/bank-accounts", response_model=BankAccountResponse)
-def create_bank_account(account: BankAccountCreate, db: Session = Depends(get_db)):
-
-    new_account = BankAccount(**account.model_dump())
+    new_account = Account(**account.model_dump())
     db.add(new_account)
     db.commit()
     db.refresh(new_account)
@@ -72,26 +68,32 @@ def create_bank_account(account: BankAccountCreate, db: Session = Depends(get_db
     return new_account
 
 
-# GET returns all bank accounts
-@app.get("/bank-accounts", response_model=list[BankAccountResponse])
-def get_bank_accounts(db: Session = Depends(get_db)):
-
-    return db.query(BankAccount).all()
 
 
-# PUT updates name and/or balance of a bank account
-@app.put("/bank-accounts/{account_id}", response_model=BankAccountResponse)
-def update_bank_account(account_id: str, updates: BankAccountUpdate, db: Session = Depends(get_db)):
+@app.get("/accounts", response_model=list[AccountResponse])
 
-    account = db.query(BankAccount).filter(BankAccount.id == account_id).first()
+def get_accounts(db: Session = Depends(get_db)):
+
+    return db.query(Account).all()
+
+
+
+@app.put("/accounts/{account_id}", response_model=AccountResponse)
+
+def update_account(account_id: str, updates: AccountUpdate, db: Session = Depends(get_db)):
+
+    account = db.query(Account).filter(Account.id == account_id).first()
     if not account:
-        raise HTTPException(status_code=404, detail="Bank account not found")
+        raise HTTPException(status_code=404, detail="Account not found")
 
-    # only update fields that were provided in the request
     if updates.account_name is not None:
         account.account_name = updates.account_name
     if updates.balance is not None:
         account.balance = updates.balance
+    if updates.account_type is not None:
+        account.account_type = updates.account_type
+    if updates.include_in_budget is not None:
+        account.include_in_budget = updates.include_in_budget
 
     db.commit()
     db.refresh(account)
@@ -99,75 +101,19 @@ def update_bank_account(account_id: str, updates: BankAccountUpdate, db: Session
     return account
 
 
-#deletes a bank account by its ID
-@app.delete("/bank-accounts/{account_id}")
-def delete_bank_account(account_id: str, db: Session = Depends(get_db)):
 
-    account = db.query(BankAccount).filter(BankAccount.id == account_id).first()
+
+@app.delete("/accounts/{account_id}")
+
+def delete_account(account_id: str, db: Session = Depends(get_db)):
+
+    account = db.query(Account).filter(Account.id == account_id).first()
     if not account:
-        raise HTTPException(status_code=404, detail="Bank account not found")
-
+        raise HTTPException(status_code=404, detail="Account not found")
     db.delete(account)
     db.commit()
 
-    return {"detail": "Bank account deleted"}
-
-
-
-
-
-
-##-----Pot Routes-----##
-
-@app.post("/pots", response_model=PotResponse)
-def create_pot(pot: PotCreate, db: Session = Depends(get_db)):
-
-    new_pot = Pot(**pot.model_dump())
-    db.add(new_pot)
-    db.commit()
-    db.refresh(new_pot)
-
-    return new_pot
-
-
-#returns all pots
-@app.get("/pots", response_model=list[PotResponse])
-def get_pots(db: Session = Depends(get_db)):
-
-    return db.query(Pot).all()
-
-
-@app.put("/pots/{pot_id}", response_model=PotResponse)
-def update_pot(pot_id: str, updates: PotUpdate, db: Session = Depends(get_db)):
-
-    pot = db.query(Pot).filter(Pot.id == pot_id).first()
-    if not pot:
-        raise HTTPException(status_code=404, detail="Pot not found")
-
-    if updates.pot_name is not None:
-        pot.pot_name = updates.pot_name
-    if updates.balance is not None:
-        pot.balance = updates.balance
-
-    db.commit()
-    db.refresh(pot)
-
-    return pot
-
-
-@app.delete("/pots/{pot_id}")
-def delete_pot(pot_id: str, db: Session = Depends(get_db)):
-
-    pot = db.query(Pot).filter(Pot.id == pot_id).first()
-    if not pot:
-        raise HTTPException(status_code=404, detail="Pot not found")
-
-    db.delete(pot)
-    db.commit()
-
-    return {"detail": "Pot deleted"}
-
-
+    return {"detail": "Account deleted"}
 
 
 
@@ -186,7 +132,6 @@ def create_fixed_cost(cost: FixedCostCreate, db: Session = Depends(get_db)):
     return new_cost
 
 
-
 @app.get("/fixed-costs", response_model=list[FixedCostResponse])
 def get_fixed_costs(db: Session = Depends(get_db)):
 
@@ -200,8 +145,6 @@ def update_fixed_cost(cost_id: str, updates: FixedCostUpdate, db: Session = Depe
     if not cost:
         raise HTTPException(status_code=404, detail="Fixed cost not found")
 
-
-
     if updates.cost_name is not None:
         cost.cost_name = updates.cost_name
     if updates.amount is not None:
@@ -213,7 +156,6 @@ def update_fixed_cost(cost_id: str, updates: FixedCostUpdate, db: Session = Depe
     db.refresh(cost)
 
     return cost
-
 
 
 @app.delete("/fixed-costs/{cost_id}")
@@ -236,7 +178,6 @@ def delete_fixed_cost(cost_id: str, db: Session = Depends(get_db)):
 @app.post("/envelopes", response_model=EnvelopeResponse)
 def create_envelope(envelope: EnvelopeCreate, db: Session = Depends(get_db)):
 
-    # balance starts equal to allocated amount on creation
     new_envelope = Envelope(**envelope.model_dump(), balance=envelope.allocated_amount)
     db.add(new_envelope)
     db.commit()
@@ -249,8 +190,6 @@ def create_envelope(envelope: EnvelopeCreate, db: Session = Depends(get_db)):
 def get_envelopes(db: Session = Depends(get_db)):
 
     return db.query(Envelope).all()
-
-
 
 
 @app.put("/envelopes/{envelope_id}", response_model=EnvelopeResponse)
@@ -271,8 +210,6 @@ def update_envelope(envelope_id: str, updates: EnvelopeUpdate, db: Session = Dep
     return envelope
 
 
-
-
 @app.delete("/envelopes/{envelope_id}")
 def delete_envelope(envelope_id: str, db: Session = Depends(get_db)):
 
@@ -284,6 +221,7 @@ def delete_envelope(envelope_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"detail": "Envelope deleted"}
+
 
 
 
@@ -341,13 +279,11 @@ def delete_goal(goal_id: str, db: Session = Depends(get_db)):
 
 
 
-
 ##-----Transaction Routes-----##
 
 @app.post("/transactions", response_model=TransactionResponse)
 def create_transaction(transaction: TransactionCreate, db: Session = Depends(get_db)):
 
-    # find the envelope the transaction belongs to
     envelope = db.query(Envelope).filter(Envelope.id == transaction.envelope_id).first()
     if not envelope:
         raise HTTPException(status_code=404, detail="Envelope not found")
@@ -355,28 +291,18 @@ def create_transaction(transaction: TransactionCreate, db: Session = Depends(get
     # deduct from balance only — allocated_amount stays fixed as the original budget
     envelope.balance = envelope.balance - transaction.amount
 
-    # save the transaction record
     new_transaction = Transaction(**transaction.model_dump())
     db.add(new_transaction)
-
-    # commit transaction and the updated envelope balance
     db.commit()
     db.refresh(new_transaction)
 
     return new_transaction
 
 
-
-
-
-# get all transactions for a specific envelope
 @app.get("/transactions/envelope/{envelope_id}", response_model=list[TransactionResponse])
 def get_transactions_by_envelope(envelope_id: str, db: Session = Depends(get_db)):
 
     return db.query(Transaction).filter(Transaction.envelope_id == envelope_id).all()
-
-
-
 
 
 @app.put("/transactions/{transaction_id}", response_model=TransactionResponse)
@@ -386,7 +312,6 @@ def update_transaction(transaction_id: str, updates: TransactionUpdate, db: Sess
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
-    # only description and date can be updated
     if updates.description is not None:
         transaction.description = updates.description
     if updates.date is not None:
@@ -396,8 +321,6 @@ def update_transaction(transaction_id: str, updates: TransactionUpdate, db: Sess
     db.refresh(transaction)
 
     return transaction
-
-
 
 
 @app.delete("/transactions/{transaction_id}")
@@ -425,18 +348,17 @@ def delete_transaction(transaction_id: str, db: Session = Depends(get_db)):
 @app.post("/transfers", response_model=TransferResponse)
 def create_transfer(transfer: TransferCreate, db: Session = Depends(get_db)):
 
-    from_account = db.query(BankAccount).filter(BankAccount.id == transfer.from_account_id).first()
+    from_account = db.query(Account).filter(Account.id == transfer.from_account_id).first()
     if not from_account:
         raise HTTPException(status_code=404, detail="Source account not found")
 
-    to_account = db.query(BankAccount).filter(BankAccount.id == transfer.to_account_id).first()
+    to_account = db.query(Account).filter(Account.id == transfer.to_account_id).first()
     if not to_account:
         raise HTTPException(status_code=404, detail="Destination account not found")
 
     if transfer.from_account_id == transfer.to_account_id:
         raise HTTPException(status_code=400, detail="Cannot transfer to the same account")
 
-    # deduct from source, add to destination
     from_account.balance = from_account.balance - transfer.amount
     to_account.balance = to_account.balance + transfer.amount
 
@@ -452,7 +374,3 @@ def create_transfer(transfer: TransferCreate, db: Session = Depends(get_db)):
 def get_transfers(db: Session = Depends(get_db)):
 
     return db.query(Transfer).all()
-
-
-
-

@@ -19,42 +19,26 @@ class UserResponse(BaseModel):
 
 
 
-##-----Bank Account Schemas-----##
+##-----Account Schemas-----##
 
-class BankAccountCreate(BaseModel):
+class AccountCreate(BaseModel):
     account_name: str
     balance: Decimal
+    account_type: str           # "bank" or "pot"
+    include_in_budget: bool = True
 
-
-class BankAccountUpdate(BaseModel):
+class AccountUpdate(BaseModel):
     account_name: str | None = None
     balance: Decimal | None = None
+    account_type: str | None = None
+    include_in_budget: bool | None = None
 
-class BankAccountResponse(BaseModel):
+class AccountResponse(BaseModel):
     id: str
     account_name: str
     balance: Decimal
-    class Config:
-        from_attributes = True
-
-
-
-
-##-----Pot Schemas-----##
-
-class PotCreate(BaseModel):
-    pot_name: str
-    balance: Decimal
-
-class PotUpdate(BaseModel):
-    pot_name: str | None = None
-    balance: Decimal | None = None
-
-
-class PotResponse(BaseModel):
-    id: str
-    pot_name: str
-    balance: Decimal
+    account_type: str
+    include_in_budget: bool
     class Config:
         from_attributes = True
 
@@ -62,7 +46,6 @@ class PotResponse(BaseModel):
 
 
 ##-----Fixed Cost Schemas-----##
-
 
 class FixedCostCreate(BaseModel):
     cost_name: str
@@ -170,7 +153,3 @@ class TransferResponse(BaseModel):
     description: str | None
     class Config:
         from_attributes = True
-
-
-
-

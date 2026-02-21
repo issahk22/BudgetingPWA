@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import styles from "./dashboard.module.css";
 
 const API = "http://localhost:8000";
 
 
 export default function Dashboard() {
 
-  const [bankAccounts, setBankAccounts] = useState([]);
-  const [pots, setPots] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [envelopes, setEnvelopes] = useState([]);
   const [fixedCosts, setFixedCosts] = useState([]);
   const [transfers, setTransfers] = useState([]);
@@ -18,7 +18,7 @@ export default function Dashboard() {
   const [openAccountLogs, setOpenAccountLogs] = useState(new Set());
 
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ envelope_id: "", bank_account_id: "", amount: "", description: "", date: "" });
+  const [form, setForm] = useState({ envelope_id: "", account_id: "", amount: "", description: "", date: "" });
   const [submitting, setSubmitting] = useState(false);
 
   const [showTransferForm, setShowTransferForm] = useState(false);
@@ -31,22 +31,19 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [accountsRes, potsRes, envelopesRes, fixedCostsRes, transfersRes] = await Promise.all([
-          fetch(`${API}/bank-accounts`),
-          fetch(`${API}/pots`),
+        const [accountsRes, envelopesRes, fixedCostsRes, transfersRes] = await Promise.all([
+          fetch(`${API}/accounts`),
           fetch(`${API}/envelopes`),
           fetch(`${API}/fixed-costs`),
           fetch(`${API}/transfers`),
         ]);
 
         const accountsData = await accountsRes.json();
-        const potsData = await potsRes.json();
         const envelopesData = await envelopesRes.json();
         const fixedCostsData = await fixedCostsRes.json();
         const transfersData = await transfersRes.json();
 
-        setBankAccounts(accountsData);
-        setPots(potsData);
+        setAccounts(accountsData);
         setEnvelopes(envelopesData);
         setFixedCosts(fixedCostsData);
         setTransfers(transfersData);
@@ -73,7 +70,10 @@ export default function Dashboard() {
   }, []);
 
 
-  const totalBalance = bankAccounts.reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
+
+  const totalBalance = accounts
+    .filter((acc) => acc.include_in_budget)
+    .reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
 
 
   async function handlePaidToggle(cost) {
@@ -86,20 +86,22 @@ export default function Dashboard() {
       body: JSON.stringify({ paid: newPaid }),
     });
 
-    if (bankAccounts.length > 0) {
-      const account = bankAccounts[0];
-      const newBalance = newPaid
-        ? parseFloat(account.balance) - amount
-        : parseFloat(account.balance) + amount;
 
-      await fetch(`${API}/bank-accounts/${account.id}`, {
+
+    const bankAccount = accounts.find((a) => a.include_in_budget);
+    if (bankAccount) {
+      const newBalance = newPaid
+        ? parseFloat(bankAccount.balance) - amount
+        : parseFloat(bankAccount.balance) + amount;
+
+      await fetch(`${API}/accounts/${bankAccount.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ balance: newBalance }),
       });
 
-      setBankAccounts((prev) =>
-        prev.map((acc) => acc.id === account.id ? { ...acc, balance: newBalance } : acc)
+      setAccounts((prev) =>
+        prev.map((acc) => acc.id === bankAccount.id ? { ...acc, balance: newBalance } : acc)
       );
     }
 
@@ -109,6 +111,8 @@ export default function Dashboard() {
   }
 
 
+
+
   function toggleEnvelopeLog(envId) {
     setOpenEnvelopes((prev) => {
       const next = new Set(prev);
@@ -116,6 +120,8 @@ export default function Dashboard() {
       return next;
     });
   }
+
+
 
 
   function toggleAccountLog(accountId) {
@@ -134,9 +140,12 @@ export default function Dashboard() {
   }
 
 
+
   function getAccountName(accountId) {
-    return bankAccounts.find((a) => a.id === accountId)?.account_name || "Unknown";
+    return accounts.find((a) => a.id === accountId)?.account_name || "Unknown";
   }
+
+
 
 
   async function handleAddTransaction(e) {
@@ -156,15 +165,15 @@ export default function Dashboard() {
       });
       const newTx = await txRes.json();
 
-      const account = bankAccounts.find((a) => a.id === form.bank_account_id);
+      const account = accounts.find((a) => a.id === form.account_id);
       if (account) {
         const newBalance = parseFloat(account.balance) - parseFloat(form.amount);
-        await fetch(`${API}/bank-accounts/${account.id}`, {
+        await fetch(`${API}/accounts/${account.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ balance: newBalance }),
         });
-        setBankAccounts((prev) =>
+        setAccounts((prev) =>
           prev.map((a) => a.id === account.id ? { ...a, balance: newBalance } : a)
         );
       }
@@ -182,7 +191,7 @@ export default function Dashboard() {
         [form.envelope_id]: [newTx, ...(prev[form.envelope_id] || [])],
       }));
 
-      setForm({ envelope_id: "", bank_account_id: "", amount: "", description: "", date: "" });
+      setForm({ envelope_id: "", account_id: "", amount: "", description: "", date: "" });
       setShowForm(false);
     } catch (err) {
       console.error("Failed to add transaction:", err);
@@ -218,7 +227,7 @@ export default function Dashboard() {
       const newTransfer = await res.json();
       const amount = parseFloat(transferForm.amount);
 
-      setBankAccounts((prev) =>
+      setAccounts((prev) =>
         prev.map((acc) => {
           if (acc.id === transferForm.from_account_id) return { ...acc, balance: parseFloat(acc.balance) - amount };
           if (acc.id === transferForm.to_account_id) return { ...acc, balance: parseFloat(acc.balance) + amount };
@@ -241,15 +250,14 @@ export default function Dashboard() {
 
 
   return (
-    <div>
+    <div className={styles.page}>
       <h1>Dashboard</h1>
 
-      <div>
-        <button onClick={() => { setShowForm((v) => !v); setShowTransferForm(false); }}>
+      <div className={styles.actions}>
+        <button className={styles.btn} onClick={() => { setShowForm((v) => !v); setShowTransferForm(false); }}>
           {showForm ? "Cancel" : "+ Add Transaction"}
         </button>
-
-        <button onClick={() => { setShowTransferForm((v) => !v); setShowForm(false); }}>
+        <button className={styles.btn} onClick={() => { setShowTransferForm((v) => !v); setShowForm(false); }}>
           {showTransferForm ? "Cancel" : "Transfer"}
         </button>
       </div>
@@ -257,7 +265,7 @@ export default function Dashboard() {
 
       {/* Add Transaction Form */}
       {showForm && (
-        <form onSubmit={handleAddTransaction}>
+        <form className={styles.form} onSubmit={handleAddTransaction}>
           <h3>New Transaction</h3>
 
           <label>
@@ -271,11 +279,13 @@ export default function Dashboard() {
           </label>
 
           <label>
-            Bank Account
-            <select required value={form.bank_account_id} onChange={(e) => setForm({ ...form, bank_account_id: e.target.value })}>
+            Account
+            <select required value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}>
               <option value="">Select account</option>
-              {bankAccounts.map((acc) => (
-                <option key={acc.id} value={acc.id}>{acc.account_name} (£{parseFloat(acc.balance).toFixed(2)})</option>
+              {accounts.map((acc) => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.account_name} ({acc.account_type}) — £{parseFloat(acc.balance).toFixed(2)}
+                </option>
               ))}
             </select>
           </label>
@@ -295,34 +305,38 @@ export default function Dashboard() {
             <input type="text" maxLength={80} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </label>
 
-          <button type="submit" disabled={submitting}>{submitting ? "Saving..." : "Save Transaction"}</button>
+          <button className={styles.btn} type="submit" disabled={submitting}>{submitting ? "Saving..." : "Save Transaction"}</button>
         </form>
       )}
 
 
       {/* Transfer Form */}
       {showTransferForm && (
-        <form onSubmit={handleTransfer}>
+        <form className={styles.form} onSubmit={handleTransfer}>
           <h3>Transfer Between Accounts</h3>
 
           <label>
-            From Account
+            From
             <select required value={transferForm.from_account_id} onChange={(e) => setTransferForm({ ...transferForm, from_account_id: e.target.value })}>
               <option value="">Select account</option>
-              {bankAccounts.map((acc) => (
-                <option key={acc.id} value={acc.id}>{acc.account_name} (£{parseFloat(acc.balance).toFixed(2)})</option>
+              {accounts.map((acc) => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.account_name} ({acc.account_type}) — £{parseFloat(acc.balance).toFixed(2)}
+                </option>
               ))}
             </select>
           </label>
 
           <label>
-            To Account
+            To
             <select required value={transferForm.to_account_id} onChange={(e) => setTransferForm({ ...transferForm, to_account_id: e.target.value })}>
               <option value="">Select account</option>
-              {bankAccounts
+              {accounts
                 .filter((acc) => acc.id !== transferForm.from_account_id)
                 .map((acc) => (
-                  <option key={acc.id} value={acc.id}>{acc.account_name} (£{parseFloat(acc.balance).toFixed(2)})</option>
+                  <option key={acc.id} value={acc.id}>
+                    {acc.account_name} ({acc.account_type}) — £{parseFloat(acc.balance).toFixed(2)}
+                  </option>
                 ))}
             </select>
           </label>
@@ -342,32 +356,34 @@ export default function Dashboard() {
             <input type="text" maxLength={80} value={transferForm.description} onChange={(e) => setTransferForm({ ...transferForm, description: e.target.value })} />
           </label>
 
-          <button type="submit" disabled={transferring}>{transferring ? "Transferring..." : "Confirm Transfer"}</button>
+          <button className={styles.btn} type="submit" disabled={transferring}>{transferring ? "Transferring..." : "Confirm Transfer"}</button>
         </form>
       )}
 
 
-      <div style={{ display: "flex", gap: "40px", marginTop: "20px", flexWrap: "wrap" }}>
+      <div className={styles.columns}>
 
-        {/* Bank Accounts */}
-        <div>
-          <h2>Bank Accounts</h2>
-          <p>Total: £{totalBalance.toFixed(2)}</p>
 
-          {bankAccounts.length === 0 ? <p>No accounts found.</p> : (
+
+        {/* Accounts */}
+        <div className={styles.card}>
+          <h2>Accounts</h2>
+          <p>Budget total: £{totalBalance.toFixed(2)}</p>
+
+          {accounts.length === 0 ? <p>No accounts found.</p> : (
             <ul>
-              {bankAccounts.map((acc) => {
+              {accounts.map((acc) => {
                 const isOpen = openAccountLogs.has(acc.id);
                 const accTransfers = getAccountTransfers(acc.id);
                 return (
                   <li key={acc.id}>
-                    <div onClick={() => toggleAccountLog(acc.id)} style={{ cursor: "pointer" }}>
-                      <span>{acc.account_name}</span>
-                      <span> £{parseFloat(acc.balance).toFixed(2)} {isOpen ? "▲" : "▼"}</span>
+                    <div className={styles.row} onClick={() => toggleAccountLog(acc.id)}>
+                      <span>{acc.account_name} <small>({acc.account_type})</small></span>
+                      <span>£{parseFloat(acc.balance).toFixed(2)} {isOpen ? "▲" : "▼"}</span>
                     </div>
 
                     {isOpen && (
-                      <div>
+                      <div className={styles.subList}>
                         <small>Transfer Log</small>
                         {accTransfers.length === 0 ? <p>No transfers yet.</p> : (
                           <ul>
@@ -375,12 +391,16 @@ export default function Dashboard() {
                               const isOutgoing = t.from_account_id === acc.id;
                               return (
                                 <li key={t.id}>
-                                  <span>
-                                    {isOutgoing ? `→ ${getAccountName(t.to_account_id)}` : `← ${getAccountName(t.from_account_id)}`}
-                                    {t.description ? ` · ${t.description}` : ""}
-                                  </span>
-                                  <span> {isOutgoing ? "-" : "+"}£{parseFloat(t.amount).toFixed(2)}</span>
-                                  {t.date && <div><small>{t.date}</small></div>}
+                                  <div className={styles.row}>
+                                    <span>
+                                      {isOutgoing ? `→ ${getAccountName(t.to_account_id)}` : `← ${getAccountName(t.from_account_id)}`}
+                                      {t.description ? ` · ${t.description}` : ""}
+                                    </span>
+                                    <span className={isOutgoing ? styles.negative : styles.positive}>
+                                      {isOutgoing ? "-" : "+"}£{parseFloat(t.amount).toFixed(2)}
+                                    </span>
+                                  </div>
+                                  {t.date && <small>{t.date}</small>}
                                 </li>
                               );
                             })}
@@ -396,21 +416,8 @@ export default function Dashboard() {
         </div>
 
 
-        {/* Pots */}
-        <div>
-          <h2>Pots</h2>
-          {pots.length === 0 ? <p>No pots found.</p> : (
-            <ul>
-              {pots.map((pot) => (
-                <li key={pot.id}>{pot.pot_name} — £{parseFloat(pot.balance).toFixed(2)}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-
         {/* Envelopes */}
-        <div>
+        <div className={styles.card}>
           <h2>Envelopes</h2>
           {envelopes.length === 0 ? <p>No envelopes found.</p> : (
             <ul>
@@ -419,20 +426,22 @@ export default function Dashboard() {
                 const envTxs = transactions[env.id] || [];
                 return (
                   <li key={env.id}>
-                    <div onClick={() => toggleEnvelopeLog(env.id)} style={{ cursor: "pointer" }}>
+                    <div className={styles.row} onClick={() => toggleEnvelopeLog(env.id)}>
                       <span>{env.envelope_name}</span>
-                      <span> £{parseFloat(env.balance).toFixed(2)} / £{parseFloat(env.allocated_amount).toFixed(2)} {isOpen ? "▲" : "▼"}</span>
+                      <span>£{parseFloat(env.balance).toFixed(2)} / £{parseFloat(env.allocated_amount).toFixed(2)} {isOpen ? "▲" : "▼"}</span>
                     </div>
 
                     {isOpen && (
-                      <div>
+                      <div className={styles.subList}>
                         {envTxs.length === 0 ? <p>No transactions yet.</p> : (
                           <ul>
                             {envTxs.map((tx) => (
                               <li key={tx.id}>
-                                <span>{tx.description || "—"}</span>
-                                <span> -£{parseFloat(tx.amount).toFixed(2)}</span>
-                                {tx.date && <div><small>{tx.date}</small></div>}
+                                <div className={styles.row}>
+                                  <span>{tx.description || "—"}</span>
+                                  <span className={styles.negative}>-£{parseFloat(tx.amount).toFixed(2)}</span>
+                                </div>
+                                {tx.date && <small>{tx.date}</small>}
                               </li>
                             ))}
                           </ul>
@@ -448,14 +457,14 @@ export default function Dashboard() {
 
 
         {/* Monthly Fixed Costs */}
-        <div>
+        <div className={styles.card}>
           <h2>Monthly Costs</h2>
           {fixedCosts.length === 0 ? <p>No fixed costs found.</p> : (
             <ul>
               {fixedCosts.map((cost) => (
-                <li key={cost.id}>
+                <li key={cost.id} className={styles.row}>
                   <span>{cost.cost_name}</span>
-                  <span> £{parseFloat(cost.amount).toFixed(2)}</span>
+                  <span>£{parseFloat(cost.amount).toFixed(2)}</span>
                   <label>
                     <input type="checkbox" checked={cost.paid} onChange={() => handlePaidToggle(cost)} />
                     Paid?

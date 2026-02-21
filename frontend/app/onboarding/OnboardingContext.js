@@ -14,15 +14,13 @@ export function OnboardingProvider({ children }) {
     goal: "",
     currentSavings: "",
     goalDeadline: "",
-    bankAccounts: [],
-    pots: [],
+    accounts: [],       
     fixedCosts: [],
     envelopes: [],
   });
 
 
-
-//ensures data is kept when user is modifying a field. 
+//ensures data is kept when user is modifying a field.
   function update(fields) {
     setData(prev => ({ ...prev, ...fields }));
   }
