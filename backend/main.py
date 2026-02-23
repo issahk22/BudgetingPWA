@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 
 from database import Base, engine, get_db
-from models import User, Account, FixedCost, Envelope, Transaction, Goal, Transfer, MonthOpenSnapshot
+from models import User, Account, FixedCost, Envelope, Transaction, Goal, Transfer, MonthOpenSnapshot, Job
 from schemas import (UserCreate, UserResponse,
     AccountCreate, AccountUpdate, AccountResponse,
     EnvelopeCreate, EnvelopeUpdate, EnvelopeResponse,
@@ -13,6 +13,7 @@ from schemas import (UserCreate, UserResponse,
     GoalCreate, GoalUpdate, GoalResponse,
     TransferCreate, TransferResponse,
     MonthOpenSnapshotCreate, MonthOpenSnapshotResponse,
+    JobCreate, JobUpdate, JobResponse,
 )
 
 # creates tables in db if they don't exist already
@@ -436,3 +437,56 @@ def get_snapshot(year: int, month: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Snapshot not found")
 
     return snapshot
+
+
+
+##-----Job Routes-----##
+
+@app.post("/jobs", response_model=JobResponse)
+def create_job(job: JobCreate, db: Session = Depends(get_db)):
+
+    new_job = Job(**job.model_dump())
+    db.add(new_job)
+    db.commit()
+    db.refresh(new_job)
+
+    return new_job
+
+
+@app.get("/jobs", response_model=list[JobResponse])
+def get_jobs(db: Session = Depends(get_db)):
+
+    return db.query(Job).all()
+
+
+
+@app.put("/jobs/{job_id}", response_model=JobResponse)
+def update_job(job_id: str, updates: JobUpdate, db: Session = Depends(get_db)):
+
+    job = db.query(Job).filter(Job.job_id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if updates.job_name is not None:
+        job.job_name = updates.job_name
+    if updates.base_hourly_rate is not None:
+        job.base_hourly_rate = updates.base_hourly_rate
+
+    db.commit()
+    db.refresh(job)
+
+    return job
+
+
+
+@app.delete("/jobs/{job_id}")
+def delete_job(job_id: str, db: Session = Depends(get_db)):
+
+    job = db.query(Job).filter(Job.job_id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    db.delete(job)
+    db.commit()
+
+    return {"detail": "Job deleted"}

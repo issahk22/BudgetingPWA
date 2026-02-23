@@ -77,3 +77,11 @@ class MonthOpenSnapshot(Base):
     month = Column(Integer, primary_key=True, nullable=False)
     year = Column(Integer, primary_key=True, nullable=False)
     accounts_opening_balance = Column(Numeric(12, 2), nullable=False)
+
+
+class Job(Base):
+    __tablename__ = "jobs"
+
+    job_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    job_name = Column(String, nullable=False)
+    base_hourly_rate = Column(Numeric(12, 2), nullable=False)

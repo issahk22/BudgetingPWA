@@ -169,3 +169,23 @@ class MonthOpenSnapshotResponse(BaseModel):
     accounts_opening_balance: Decimal
     class Config:
         from_attributes = True
+        
+
+##-----Job Schemas-----##
+
+class JobCreate(BaseModel):
+    job_name: str
+    base_hourly_rate: Decimal
+
+class JobUpdate(BaseModel):
+    job_name: str | None = None
+    base_hourly_rate: Decimal | None = None
+
+class JobResponse(BaseModel):
+    job_id: str
+    job_name: str
+    base_hourly_rate: Decimal
+    class Config:
+        from_attributes = True
+
+
