@@ -85,3 +85,16 @@ class Job(Base):
     job_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     job_name = Column(String, nullable=False)
     base_hourly_rate = Column(Numeric(12, 2), nullable=False)
+
+
+
+class Shift(Base):
+    __tablename__ = "shifts"
+
+    shift_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    job_id = Column(String, nullable=False)       # references jobs.job_id
+    date = Column(String, nullable=False)
+    hours_worked = Column(Numeric(5, 2), nullable=False)
+    shift_type = Column(String, nullable=False)   # "regular" | "overtime" | "night" | "weekend"
+    rate_multiplier = Column(Numeric(4, 2), nullable=False, default=1.00)
+    total_pay = Column(Numeric(12, 2), nullable=False)  # hours_worked x base_hourly_rate x rate_multiplier

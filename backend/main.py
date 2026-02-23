@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 
 from database import Base, engine, get_db
-from models import User, Account, FixedCost, Envelope, Transaction, Goal, Transfer, MonthOpenSnapshot, Job
+from models import User, Account, FixedCost, Envelope, Transaction, Goal, Transfer, MonthOpenSnapshot, Job, Shift
 from schemas import (UserCreate, UserResponse,
     AccountCreate, AccountUpdate, AccountResponse,
     EnvelopeCreate, EnvelopeUpdate, EnvelopeResponse,
@@ -14,6 +14,7 @@ from schemas import (UserCreate, UserResponse,
     TransferCreate, TransferResponse,
     MonthOpenSnapshotCreate, MonthOpenSnapshotResponse,
     JobCreate, JobUpdate, JobResponse,
+    ShiftCreate, ShiftUpdate, ShiftResponse,
 )
 
 # creates tables in db if they don't exist already
@@ -490,3 +491,87 @@ def delete_job(job_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"detail": "Job deleted"}
+
+
+
+
+##-----Shift Routes-----##
+
+@app.post("/shifts", response_model=ShiftResponse)
+def create_shift(shift: ShiftCreate, db: Session = Depends(get_db)):
+
+    job = db.query(Job).filter(Job.job_id == shift.job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    #calculates total pay in backend from user data 
+    total_pay = shift.hours_worked * job.base_hourly_rate * shift.rate_multiplier
+
+    new_shift = Shift(
+        job_id=shift.job_id,
+        date=shift.date,
+        hours_worked=shift.hours_worked,
+        shift_type=shift.shift_type,
+        rate_multiplier=shift.rate_multiplier,
+        total_pay=total_pay
+    )
+    db.add(new_shift)
+    db.commit()
+    db.refresh(new_shift)
+
+    return new_shift
+
+
+@app.get("/shifts", response_model=list[ShiftResponse])
+def get_shifts(db: Session = Depends(get_db)):
+
+    return db.query(Shift).all()
+
+
+@app.get("/shifts/job/{job_id}", response_model=list[ShiftResponse])
+def get_shifts_by_job(job_id: str, db: Session = Depends(get_db)):
+
+    return db.query(Shift).filter(Shift.job_id == job_id).all()
+
+
+@app.put("/shifts/{shift_id}", response_model=ShiftResponse)
+def update_shift(shift_id: str, updates: ShiftUpdate, db: Session = Depends(get_db)):
+
+    shift = db.query(Shift).filter(Shift.shift_id == shift_id).first()
+    if not shift:
+        raise HTTPException(status_code=404, detail="Shift not found")
+
+    if updates.date is not None:
+        shift.date = updates.date
+    if updates.hours_worked is not None:
+        shift.hours_worked = updates.hours_worked
+    if updates.shift_type is not None:
+        shift.shift_type = updates.shift_type
+    if updates.rate_multiplier is not None:
+        shift.rate_multiplier = updates.rate_multiplier
+
+
+
+    # ecalculate total_pay whenever shift details change
+    job = db.query(Job).filter(Job.job_id == shift.job_id).first()
+    shift.total_pay = shift.hours_worked * job.base_hourly_rate * shift.rate_multiplier
+
+    db.commit()
+    db.refresh(shift)
+
+    return shift
+
+
+
+
+@app.delete("/shifts/{shift_id}")
+def delete_shift(shift_id: str, db: Session = Depends(get_db)):
+
+    shift = db.query(Shift).filter(Shift.shift_id == shift_id).first()
+    if not shift:
+        raise HTTPException(status_code=404, detail="Shift not found")
+
+    db.delete(shift)
+    db.commit()
+
+    return {"detail": "Shift deleted"}

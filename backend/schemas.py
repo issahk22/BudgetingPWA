@@ -169,7 +169,7 @@ class MonthOpenSnapshotResponse(BaseModel):
     accounts_opening_balance: Decimal
     class Config:
         from_attributes = True
-        
+
 
 ##-----Job Schemas-----##
 
@@ -187,5 +187,35 @@ class JobResponse(BaseModel):
     base_hourly_rate: Decimal
     class Config:
         from_attributes = True
+
+
+
+
+##-----Shift Schemas-----##
+
+class ShiftCreate(BaseModel):
+    job_id: str
+    date: str
+    hours_worked: Decimal
+    shift_type: str
+    rate_multiplier: Decimal = Decimal("1.00")
+
+class ShiftUpdate(BaseModel):
+    date: str | None = None
+    hours_worked: Decimal | None = None
+    shift_type: str | None = None
+    rate_multiplier: Decimal | None = None
+
+class ShiftResponse(BaseModel):
+    shift_id: str
+    job_id: str
+    date: str
+    hours_worked: Decimal
+    shift_type: str
+    rate_multiplier: Decimal
+    total_pay: Decimal
+    class Config:
+        from_attributes = True
+
 
 
