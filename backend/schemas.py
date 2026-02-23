@@ -153,3 +153,19 @@ class TransferResponse(BaseModel):
     description: str | None
     class Config:
         from_attributes = True
+
+
+
+##-----Month Open Snapshot Schemas-----##
+
+class MonthOpenSnapshotCreate(BaseModel):
+    month: int
+    year: int
+    accounts_opening_balance: Decimal
+
+class MonthOpenSnapshotResponse(BaseModel):
+    month: int
+    year: int
+    accounts_opening_balance: Decimal
+    class Config:
+        from_attributes = True

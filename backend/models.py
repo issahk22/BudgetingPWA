@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Numeric, Boolean
+from sqlalchemy import Column, String, Integer, Numeric, Boolean, UniqueConstraint
 import uuid
 
 from database import Base
@@ -70,3 +70,10 @@ class Transfer(Base):
     amount = Column(Numeric(12, 2), nullable=False)
     date = Column(String, nullable=True)
     description = Column(String, nullable=True)
+
+class MonthOpenSnapshot(Base):
+    __tablename__ = "month_open_snapshots"
+
+    month = Column(Integer, primary_key=True, nullable=False)
+    year = Column(Integer, primary_key=True, nullable=False)
+    accounts_opening_balance = Column(Numeric(12, 2), nullable=False)

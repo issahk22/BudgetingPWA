@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 
 from database import Base, engine, get_db
-from models import User, Account, FixedCost, Envelope, Transaction, Goal, Transfer
+from models import User, Account, FixedCost, Envelope, Transaction, Goal, Transfer, MonthOpenSnapshot
 from schemas import (UserCreate, UserResponse,
     AccountCreate, AccountUpdate, AccountResponse,
     EnvelopeCreate, EnvelopeUpdate, EnvelopeResponse,
@@ -12,6 +12,7 @@ from schemas import (UserCreate, UserResponse,
     TransactionCreate, TransactionUpdate, TransactionResponse,
     GoalCreate, GoalUpdate, GoalResponse,
     TransferCreate, TransferResponse,
+    MonthOpenSnapshotCreate, MonthOpenSnapshotResponse,
 )
 
 # creates tables in db if they don't exist already
@@ -374,3 +375,64 @@ def create_transfer(transfer: TransferCreate, db: Session = Depends(get_db)):
 def get_transfers(db: Session = Depends(get_db)):
 
     return db.query(Transfer).all()
+
+
+
+
+
+
+##-----Month Open Snapshot Routes-----##
+
+@app.post("/month-open-snapshot", response_model=MonthOpenSnapshotResponse)
+def create_month_open_snapshot(snapshot: MonthOpenSnapshotCreate, db: Session = Depends(get_db)):
+
+
+    #prevents duplicates
+    existing = db.query(MonthOpenSnapshot).filter(
+        MonthOpenSnapshot.month == snapshot.month,
+        MonthOpenSnapshot.year == snapshot.year
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Snapshot for this month already exists")
+    
+
+    #calculates total balance across all bank accounts incl in budget
+    
+    total = db.query(Account).filter(
+        Account.account_type == "bank",
+        Account.include_in_budget == True
+    ).all()
+    opening_balance = sum(a.balance for a in total)
+
+    new_snapshot = MonthOpenSnapshot(
+        month=snapshot.month,
+        year=snapshot.year,
+        accounts_opening_balance=opening_balance
+    )
+    db.add(new_snapshot)
+    db.commit()
+    db.refresh(new_snapshot)
+
+    return new_snapshot
+
+
+@app.get("/month-open-snapshot", response_model=list[MonthOpenSnapshotResponse])
+def get_all_snapshots(db: Session = Depends(get_db)):
+
+    return db.query(MonthOpenSnapshot).order_by(
+        MonthOpenSnapshot.year.desc(),
+        MonthOpenSnapshot.month.desc()
+    ).all()
+
+
+@app.get("/month-open-snapshot/{year}/{month}", response_model=MonthOpenSnapshotResponse)
+def get_snapshot(year: int, month: int, db: Session = Depends(get_db)):
+
+    snapshot = db.query(MonthOpenSnapshot).filter(
+        MonthOpenSnapshot.month == month,
+        MonthOpenSnapshot.year == year
+    ).first()
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+
+    return snapshot
