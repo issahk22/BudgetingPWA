@@ -44,3 +44,24 @@ class ShiftHistory(Base):
     shift_type = Column(String, nullable=False)
     rate_multiplier = Column(Numeric(4, 2), nullable=False)
     total_pay = Column(Numeric(12, 2), nullable=False)
+
+
+class FixedCostHistory(Base):
+    __tablename__ = "fixed_cost_history"
+
+    month = Column(Integer, primary_key=True, nullable=False)
+    year = Column(Integer, primary_key=True, nullable=False)
+    cost_name = Column(String, primary_key=True, nullable=False)
+    amount = Column(Numeric(12, 2), nullable=False)
+    was_paid = Column(Boolean, nullable=False)
+
+
+class GoalHistory(Base):
+    __tablename__ = "goal_history"
+
+    month = Column(Integer, primary_key=True, nullable=False)
+    year = Column(Integer, primary_key=True, nullable=False)
+    goal_name = Column(String, primary_key=True, nullable=False)
+    target_amount = Column(Numeric(12, 2), nullable=False)
+    amount_at_month_end = Column(Numeric(12, 2), nullable=False)
+    on_track = Column(Boolean, nullable=False)

@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from history_database import Base, engine, get_history_db
-from history_models import MonthSummary, EnvelopeHistory, ShiftHistory
-from history_schemas import MonthSummaryCreate, MonthSummaryResponse, EnvelopeHistoryCreate, EnvelopeHistoryResponse, ShiftHistoryCreate, ShiftHistoryResponse
+from history_models import MonthSummary, EnvelopeHistory, ShiftHistory, FixedCostHistory, GoalHistory
+from history_schemas import MonthSummaryCreate, MonthSummaryResponse, EnvelopeHistoryCreate, EnvelopeHistoryResponse, ShiftHistoryCreate, ShiftHistoryResponse, FixedCostHistoryCreate, FixedCostHistoryResponse, GoalHistoryCreate, GoalHistoryResponse
 
 Base.metadata.create_all(bind=engine)
 
@@ -128,5 +128,75 @@ def get_shift_history(year: int, month: int, db: Session = Depends(get_history_d
     ).all()
     if not results:
         raise HTTPException(status_code=404, detail="No shift history found for this month")
+
+    return results
+
+
+##-----Fixed Cost History Routes-----##
+
+
+@app.post("/fixed-cost-history", response_model=FixedCostHistoryResponse)
+def create_fixed_cost_history(cost: FixedCostHistoryCreate, db: Session = Depends(get_history_db)):
+
+    existing = db.query(FixedCostHistory).filter(
+        FixedCostHistory.month == cost.month,
+        FixedCostHistory.year == cost.year,
+        FixedCostHistory.cost_name == cost.cost_name
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Fixed cost history for this month already exists")
+
+    new_cost = FixedCostHistory(**cost.model_dump())
+    db.add(new_cost)
+    db.commit()
+    db.refresh(new_cost)
+
+    return new_cost
+
+
+@app.get("/fixed-cost-history/{year}/{month}", response_model=list[FixedCostHistoryResponse])
+def get_fixed_cost_history(year: int, month: int, db: Session = Depends(get_history_db)):
+
+    results = db.query(FixedCostHistory).filter(
+        FixedCostHistory.month == month,
+        FixedCostHistory.year == year
+    ).all()
+    if not results:
+        raise HTTPException(status_code=404, detail="No fixed cost history found for this month")
+
+    return results
+
+
+##-----Goal History Routes-----##
+
+
+@app.post("/goal-history", response_model=GoalHistoryResponse)
+def create_goal_history(goal: GoalHistoryCreate, db: Session = Depends(get_history_db)):
+
+    existing = db.query(GoalHistory).filter(
+        GoalHistory.month == goal.month,
+        GoalHistory.year == goal.year,
+        GoalHistory.goal_name == goal.goal_name
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Goal history for this month already exists")
+
+    new_goal = GoalHistory(**goal.model_dump())
+    db.add(new_goal)
+    db.commit()
+    db.refresh(new_goal)
+
+    return new_goal
+
+
+@app.get("/goal-history/{year}/{month}", response_model=list[GoalHistoryResponse])
+def get_goal_history(year: int, month: int, db: Session = Depends(get_history_db)):
+
+    results = db.query(GoalHistory).filter(
+        GoalHistory.month == month,
+        GoalHistory.year == year
+    ).all()
+    if not results:
+        raise HTTPException(status_code=404, detail="No goal history found for this month")
 
     return results

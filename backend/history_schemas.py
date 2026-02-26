@@ -83,3 +83,48 @@ class ShiftHistoryResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+
+
+##-----Fixed Cost History Schemas-----##
+
+class FixedCostHistoryCreate(BaseModel):
+    month: int
+    year: int
+    cost_name: str
+    amount: Decimal
+    was_paid: bool
+
+class FixedCostHistoryResponse(BaseModel):
+    month: int
+    year: int
+    cost_name: str
+    amount: Decimal
+    was_paid: bool
+
+    class Config:
+        from_attributes = True
+
+
+
+##-----Goal History Schemas-----##
+
+class GoalHistoryCreate(BaseModel):
+    month: int
+    year: int
+    goal_name: str
+    target_amount: Decimal
+    amount_at_month_end: Decimal
+    on_track: bool
+
+class GoalHistoryResponse(BaseModel):
+    month: int
+    year: int
+    goal_name: str
+    target_amount: Decimal
+    amount_at_month_end: Decimal
+    on_track: bool
+
+    class Config:
+        from_attributes = True
