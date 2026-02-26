@@ -12,6 +12,8 @@ export default function Dashboard() {
   const [envelopes, setEnvelopes] = useState([]);
   const [fixedCosts, setFixedCosts] = useState([]);
   const [transfers, setTransfers] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [shifts, setShifts] = useState([]);
 
   const [transactions, setTransactions] = useState({});
   const [openEnvelopes, setOpenEnvelopes] = useState(new Set());
@@ -25,28 +27,38 @@ export default function Dashboard() {
   const [transferForm, setTransferForm] = useState({ from_account_id: "", to_account_id: "", amount: "", date: "", description: "" });
   const [transferring, setTransferring] = useState(false);
 
+  const [showShiftForm, setShowShiftForm] = useState(false);
+  const [shiftForm, setShiftForm] = useState({ job_id: "", date: "", hours_worked: "", shift_type: "regular", rate_multiplier: "" });
+  const [submittingShift, setSubmittingShift] = useState(false);
+
   const [loading, setLoading] = useState(true);
 
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [accountsRes, envelopesRes, fixedCostsRes, transfersRes] = await Promise.all([
+        const [accountsRes, envelopesRes, fixedCostsRes, transfersRes, jobsRes, shiftsRes] = await Promise.all([
           fetch(`${API}/accounts`),
           fetch(`${API}/envelopes`),
           fetch(`${API}/fixed-costs`),
           fetch(`${API}/transfers`),
+          fetch(`${API}/jobs`),
+          fetch(`${API}/shifts`),
         ]);
 
         const accountsData = await accountsRes.json();
         const envelopesData = await envelopesRes.json();
         const fixedCostsData = await fixedCostsRes.json();
         const transfersData = await transfersRes.json();
+        const jobsData = await jobsRes.json();
+        const shiftsData = await shiftsRes.json();
 
         setAccounts(accountsData);
         setEnvelopes(envelopesData);
         setFixedCosts(fixedCostsData);
         setTransfers(transfersData);
+        setJobs(jobsData);
+        setShifts(shiftsData);
 
         if (envelopesData.length > 0) {
           const txResults = await Promise.all(
@@ -246,6 +258,44 @@ export default function Dashboard() {
   }
 
 
+
+  async function handleLogShift(e) {
+    e.preventDefault();
+    setSubmittingShift(true);
+
+    try {
+      const res = await fetch(`${API}/shifts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          job_id: shiftForm.job_id,
+          date: shiftForm.date || null,
+          hours_worked: parseFloat(shiftForm.hours_worked),
+          shift_type: shiftForm.shift_type,
+          rate_multiplier: shiftForm.rate_multiplier ? parseFloat(shiftForm.rate_multiplier) : 1.0,
+        }),
+      });
+
+      const newShift = await res.json();
+      setShifts((prev) => [newShift, ...prev]);
+      setShiftForm({ job_id: "", date: "", hours_worked: "", shift_type: "regular", rate_multiplier: "" });
+      setShowShiftForm(false);
+    } catch (err) {
+      console.error("Failed to log shift:", err);
+    } finally {
+      setSubmittingShift(false);
+    }
+  }
+
+
+  function getJobName(jobId) {
+    return jobs.find((j) => j.job_id === jobId)?.job_name || "Unknown";
+  }
+
+
+  const totalMonthlyPay = shifts.reduce((sum, s) => sum + parseFloat(s.total_pay), 0);
+
+
   if (loading) return <p>Loading...</p>;
 
 
@@ -254,11 +304,14 @@ export default function Dashboard() {
       <h1>Dashboard</h1>
 
       <div className={styles.actions}>
-        <button className={styles.btn} onClick={() => { setShowForm((v) => !v); setShowTransferForm(false); }}>
+        <button className={styles.btn} onClick={() => { setShowForm((v) => !v); setShowTransferForm(false); setShowShiftForm(false); }}>
           {showForm ? "Cancel" : "+ Add Transaction"}
         </button>
-        <button className={styles.btn} onClick={() => { setShowTransferForm((v) => !v); setShowForm(false); }}>
+        <button className={styles.btn} onClick={() => { setShowTransferForm((v) => !v); setShowForm(false); setShowShiftForm(false); }}>
           {showTransferForm ? "Cancel" : "Transfer"}
+        </button>
+        <button className={styles.btn} onClick={() => { setShowShiftForm((v) => !v); setShowForm(false); setShowTransferForm(false); }}>
+          {showShiftForm ? "Cancel" : "+ Log Shift"}
         </button>
       </div>
 
@@ -357,6 +410,52 @@ export default function Dashboard() {
           </label>
 
           <button className={styles.btn} type="submit" disabled={transferring}>{transferring ? "Transferring..." : "Confirm Transfer"}</button>
+        </form>
+      )}
+
+
+      {/* Log Shift Form */}
+      {showShiftForm && (
+        <form className={styles.form} onSubmit={handleLogShift}>
+          <h3>Log Shift</h3>
+
+          <label>
+            Job
+            <select required value={shiftForm.job_id} onChange={(e) => setShiftForm({ ...shiftForm, job_id: e.target.value })}>
+              <option value="">Select job</option>
+              {jobs.map((job) => (
+                <option key={job.job_id} value={job.job_id}>{job.job_name} — £{parseFloat(job.base_hourly_rate).toFixed(2)}/hr</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Date
+            <input type="date" required value={shiftForm.date} onChange={(e) => setShiftForm({ ...shiftForm, date: e.target.value })} />
+          </label>
+
+          <label>
+            Hours Worked
+            <input type="number" required min="0.5" step="0.5" value={shiftForm.hours_worked} onChange={(e) => setShiftForm({ ...shiftForm, hours_worked: e.target.value })} />
+          </label>
+
+          <label>
+            Shift Type
+            <select value={shiftForm.shift_type} onChange={(e) => setShiftForm({ ...shiftForm, shift_type: e.target.value })}>
+              <option value="regular">Regular</option>
+              <option value="overtime">Overtime</option>
+              <option value="night">Night</option>
+              <option value="weekend">Weekend</option>
+              <option value="bank_holiday">Bank Holiday</option>
+            </select>
+          </label>
+
+          <label>
+            Rate Multiplier (optional)
+            <input type="number" min="1" step="0.05" placeholder="e.g. 1.5" value={shiftForm.rate_multiplier} onChange={(e) => setShiftForm({ ...shiftForm, rate_multiplier: e.target.value })} />
+          </label>
+
+          <button className={styles.btn} type="submit" disabled={submittingShift}>{submittingShift ? "Saving..." : "Log Shift"}</button>
         </form>
       )}
 
@@ -469,6 +568,26 @@ export default function Dashboard() {
                     <input type="checkbox" checked={cost.paid} onChange={() => handlePaidToggle(cost)} />
                     Paid?
                   </label>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Shifts */}
+        <div className={styles.card}>
+          <h2>Shifts</h2>
+          <p>Total this month: £{totalMonthlyPay.toFixed(2)}</p>
+
+          {shifts.length === 0 ? <p>No shifts logged yet.</p> : (
+            <ul>
+              {shifts.map((shift) => (
+                <li key={shift.shift_id}>
+                  <div className={styles.row}>
+                    <span>{getJobName(shift.job_id)} <small>· {shift.shift_type}</small></span>
+                    <span>£{parseFloat(shift.total_pay).toFixed(2)}</span>
+                  </div>
+                  <small>{shift.date} · {shift.hours_worked}hrs · x{shift.rate_multiplier}</small>
                 </li>
               ))}
             </ul>
