@@ -29,7 +29,6 @@ export default function Envelopes() {
 
 
 
-
   function addEnvelope() {
     if (!input.name) return;
     update({ envelopes: [...data.envelopes, input] });
@@ -43,8 +42,7 @@ export default function Envelopes() {
 
 
 
-
-  async function handleFinish() { //to push everything to db 
+  async function handleFinish() { //to push everything to db
     try {
 
       // user
@@ -99,13 +97,24 @@ export default function Envelopes() {
         });
       }
 
+      // jobs
+      for (const job of data.jobs) {
+        await fetch(`${API}/jobs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            job_name: job.job_name,
+            base_hourly_rate: parseFloat(job.base_hourly_rate) || 0,
+          }),
+        });
+      }
+
       router.push("/dashboard");
 
     } catch (err) {
       console.error("Failed to save onboarding data:", err);
     }
   }
-
 
 
 

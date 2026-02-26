@@ -14,9 +14,10 @@ export function OnboardingProvider({ children }) {
     goal: "",
     currentSavings: "",
     goalDeadline: "",
-    accounts: [],       
+    accounts: [],
     fixedCosts: [],
     envelopes: [],
+    jobs: [],
   });
 
 

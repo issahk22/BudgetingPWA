@@ -77,7 +77,7 @@ export default function Costs() {
         ))}
 
         <button
-          onClick={() => router.push("/onboarding/5.envelopes")}
+          onClick={() => router.push("/onboarding/6.envelopes")}
 
           className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 w-full mt-6"
         >

@@ -26,7 +26,7 @@ export default function Username() {
         />
 
         <button
-          onClick={() => router.push("/onboarding/2.goals")}
+          onClick={() => router.push("/onboarding/2.employment")}
 
           className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 w-full"
         >

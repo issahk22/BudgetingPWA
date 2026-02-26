@@ -63,7 +63,7 @@ export default function Goals() {
         </div>
 
         <button
-          onClick={() => router.push("/onboarding/3.accounts")}
+          onClick={() => router.push("/onboarding/4.accounts")}
           className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 w-full"
         >
           Next

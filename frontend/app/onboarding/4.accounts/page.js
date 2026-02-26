@@ -91,7 +91,7 @@ export default function Accounts() {
 
 
         <button
-          onClick={() => router.push("/onboarding/4.costs")}
+          onClick={() => router.push("/onboarding/5.costs")}
           className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 w-full mt-6"
         >
           Next
