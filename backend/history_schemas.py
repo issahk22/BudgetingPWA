@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from decimal import Decimal
+from datetime import date
 
 
 
@@ -25,6 +26,60 @@ class MonthSummaryResponse(BaseModel):
     total_spent: Decimal
     shifts_worked: int
     hours_worked: Decimal
+
+    class Config:
+        from_attributes = True
+
+
+
+##-----Envelope History Schemas-----##
+
+class EnvelopeHistoryCreate(BaseModel):
+    month: int
+    year: int
+    envelope_name: str
+    allocated_amount: Decimal
+    actual_spent: Decimal
+    difference: Decimal
+    overspent: bool
+
+class EnvelopeHistoryResponse(BaseModel):
+    month: int
+    year: int
+    envelope_name: str
+    allocated_amount: Decimal
+    actual_spent: Decimal
+    difference: Decimal
+    overspent: bool
+
+    class Config:
+        from_attributes = True
+
+
+
+##-----Shift History Schemas-----##
+
+class ShiftHistoryCreate(BaseModel):
+    month: int
+    year: int
+    date: date
+    job_id: int
+    hourly_base_rate: Decimal
+    hours_worked: Decimal
+    shift_type: str
+    rate_multiplier: Decimal
+
+class ShiftHistoryResponse(BaseModel):
+    id: int
+    month: int
+    year: int
+    date: date
+    job_id: int
+    hourly_base_rate: Decimal
+    hours_worked: Decimal
+    shift_type: str
+    rate_multiplier: Decimal
+    total_pay: Decimal
 
     class Config:
         from_attributes = True

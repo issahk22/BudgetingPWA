@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Numeric
+from sqlalchemy import Column, Integer, String, Numeric, Boolean, Date
 from history_database import Base
 
 
@@ -16,3 +16,31 @@ class MonthSummary(Base):
     total_spent = Column(Numeric(12, 2), nullable=False)
     shifts_worked = Column(Integer, nullable=False)
     hours_worked = Column(Numeric(6, 2), nullable=False)
+
+
+class EnvelopeHistory(Base):
+    __tablename__ = "envelope_history"
+
+    month = Column(Integer, primary_key=True, nullable=False)
+    year = Column(Integer, primary_key=True, nullable=False)
+    envelope_name = Column(String, primary_key=True, nullable=False)
+    allocated_amount = Column(Numeric(12, 2), nullable=False)
+    actual_spent = Column(Numeric(12, 2), nullable=False)
+    difference = Column(Numeric(12, 2), nullable=False)
+    overspent = Column(Boolean, nullable=False)
+
+
+
+class ShiftHistory(Base):
+    __tablename__ = "shift_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    month = Column(Integer, nullable=False)
+    year = Column(Integer, nullable=False)
+    date = Column(Date, nullable=False)
+    job_id = Column(Integer, nullable=False)
+    hourly_base_rate = Column(Numeric(8, 2), nullable=False)
+    hours_worked = Column(Numeric(6, 2), nullable=False)
+    shift_type = Column(String, nullable=False)
+    rate_multiplier = Column(Numeric(4, 2), nullable=False)
+    total_pay = Column(Numeric(12, 2), nullable=False)
