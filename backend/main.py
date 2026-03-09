@@ -1,10 +1,14 @@
 from fastapi import FastAPI, Depends, HTTPException
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 
 from database import Base, engine, get_db
+from history_database import Base as HistoryBase, engine as history_engine
 from models import User, Account, FixedCost, Envelope, Transaction, Goal, Transfer, MonthOpenSnapshot, Job, Shift
+from month_close import gather_live_data, calculate_summaries, write_to_history, reset_live_db
+from history_database import SessionLocal as HistorySession
 from schemas import (UserCreate, UserResponse,
     AccountCreate, AccountUpdate, AccountResponse,
     EnvelopeCreate, EnvelopeUpdate, EnvelopeResponse,
@@ -19,6 +23,7 @@ from schemas import (UserCreate, UserResponse,
 
 # creates tables in db if they don't exist already
 Base.metadata.create_all(bind=engine)
+HistoryBase.metadata.create_all(bind=history_engine)
 
 app = FastAPI()
 
@@ -552,7 +557,7 @@ def update_shift(shift_id: str, updates: ShiftUpdate, db: Session = Depends(get_
 
 
 
-    # ecalculate total_pay whenever shift details change
+    #recalculate total_pay whenever shift details change
     job = db.query(Job).filter(Job.job_id == shift.job_id).first()
     shift.total_pay = shift.hours_worked * job.base_hourly_rate * shift.rate_multiplier
 
@@ -575,3 +580,35 @@ def delete_shift(shift_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"detail": "Shift deleted"}
+
+
+
+
+##-----Month Close-----##
+
+class MonthCloseRequest(BaseModel):
+    month: int
+    year: int
+    net_income: float
+
+@app.post("/month-close")
+def month_close(request: MonthCloseRequest, db: Session = Depends(get_db)):
+
+    history_db = HistorySession()
+
+    try:
+        data      = gather_live_data(db, request.month, request.year)
+        summaries = calculate_summaries(data, request.month, request.year, request.net_income)
+
+        write_to_history(history_db, summaries, request.month, request.year)
+        reset_live_db(db, request.month, request.year, request.net_income)
+
+        return {"detail": "Month closed successfully"}
+
+    except Exception as e:
+        history_db.rollback()
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        history_db.close()
