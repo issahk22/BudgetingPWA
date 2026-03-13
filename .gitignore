@@ -9,3 +9,6 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+primarypersona.txt
+backend/counterfactual/generate_synthetic_data.py
