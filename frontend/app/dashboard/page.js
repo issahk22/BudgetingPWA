@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import styles from "./dashboard.module.css";
 
 const API = "http://localhost:8000";
@@ -28,8 +29,9 @@ export default function Dashboard() {
   const [transferring, setTransferring] = useState(false);
 
   const [showShiftForm, setShowShiftForm] = useState(false);
-  const [shiftForm, setShiftForm] = useState({ job_id: "", date: "", hours_worked: "", shift_type: "regular", rate_multiplier: "" });
+  const [shiftForm, setShiftForm] = useState({ job_id: "", date: "", hours_worked: "", shift_type: "", rate_multiplier: "" });
   const [submittingShift, setSubmittingShift] = useState(false);
+  const [shiftTypes, setShiftTypes] = useState([]);
 
   const [loading, setLoading] = useState(true);
 
@@ -37,13 +39,14 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [accountsRes, envelopesRes, fixedCostsRes, transfersRes, jobsRes, shiftsRes] = await Promise.all([
+        const [accountsRes, envelopesRes, fixedCostsRes, transfersRes, jobsRes, shiftsRes, shiftTypesRes] = await Promise.all([
           fetch(`${API}/accounts`),
           fetch(`${API}/envelopes`),
           fetch(`${API}/fixed-costs`),
           fetch(`${API}/transfers`),
           fetch(`${API}/jobs`),
           fetch(`${API}/shifts`),
+          fetch(`${API}/shift-types`),
         ]);
 
         const accountsData = await accountsRes.json();
@@ -52,6 +55,7 @@ export default function Dashboard() {
         const transfersData = await transfersRes.json();
         const jobsData = await jobsRes.json();
         const shiftsData = await shiftsRes.json();
+        const shiftTypesData = await shiftTypesRes.json();
 
         setAccounts(accountsData);
         setEnvelopes(envelopesData);
@@ -59,6 +63,7 @@ export default function Dashboard() {
         setTransfers(transfersData);
         setJobs(jobsData);
         setShifts(shiftsData);
+        setShiftTypes(shiftTypesData);
 
         if (envelopesData.length > 0) {
           const txResults = await Promise.all(
@@ -278,7 +283,7 @@ export default function Dashboard() {
 
       const newShift = await res.json();
       setShifts((prev) => [newShift, ...prev]);
-      setShiftForm({ job_id: "", date: "", hours_worked: "", shift_type: "regular", rate_multiplier: "" });
+      setShiftForm({ job_id: "", date: "", hours_worked: "", shift_type: "", rate_multiplier: "" });
       setShowShiftForm(false);
     } catch (err) {
       console.error("Failed to log shift:", err);
@@ -292,6 +297,9 @@ export default function Dashboard() {
     return jobs.find((j) => j.job_id === jobId)?.job_name || "Unknown";
   }
 
+  function formatShiftType(type) {
+    return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
 
   const totalMonthlyPay = shifts.reduce((sum, s) => sum + parseFloat(s.total_pay), 0);
 
@@ -302,6 +310,7 @@ export default function Dashboard() {
   return (
     <div className={styles.page}>
       <h1>Dashboard</h1>
+      <Link href="/whatif">What If?</Link>
 
       <div className={styles.actions}>
         <button className={styles.btn} onClick={() => { setShowForm((v) => !v); setShowTransferForm(false); setShowShiftForm(false); }}>
@@ -441,12 +450,11 @@ export default function Dashboard() {
 
           <label>
             Shift Type
-            <select value={shiftForm.shift_type} onChange={(e) => setShiftForm({ ...shiftForm, shift_type: e.target.value })}>
-              <option value="regular">Regular</option>
-              <option value="overtime">Overtime</option>
-              <option value="night">Night</option>
-              <option value="weekend">Weekend</option>
-              <option value="bank_holiday">Bank Holiday</option>
+            <select required value={shiftForm.shift_type} onChange={(e) => setShiftForm({ ...shiftForm, shift_type: e.target.value })}>
+              <option value="">Select shift type</option>
+              {shiftTypes.map((t) => (
+                <option key={t} value={t}>{t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+              ))}
             </select>
           </label>
 
@@ -584,7 +592,7 @@ export default function Dashboard() {
               {shifts.map((shift) => (
                 <li key={shift.shift_id}>
                   <div className={styles.row}>
-                    <span>{getJobName(shift.job_id)} <small>· {shift.shift_type}</small></span>
+                    <span>{getJobName(shift.job_id)} <small>· {formatShiftType(shift.shift_type)}</small></span>
                     <span>£{parseFloat(shift.total_pay).toFixed(2)}</span>
                   </div>
                   <small>{shift.date} · {shift.hours_worked}hrs · x{shift.rate_multiplier}</small>
