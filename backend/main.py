@@ -1,7 +1,11 @@
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), "counterfactual"))
+
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from counterfactual_router import router as counterfactual_router
 
 
 from database import Base, engine, get_db
@@ -26,6 +30,8 @@ Base.metadata.create_all(bind=engine)
 HistoryBase.metadata.create_all(bind=history_engine)
 
 app = FastAPI()
+
+app.include_router(counterfactual_router)
 
 # allows the frontend to make requests to the backend
 app.add_middleware(
@@ -525,6 +531,12 @@ def create_shift(shift: ShiftCreate, db: Session = Depends(get_db)):
     db.refresh(new_shift)
 
     return new_shift
+
+
+@app.get("/shift-types")
+def get_shift_types(db: Session = Depends(get_db)):
+    rows = db.query(Shift.shift_type).distinct().all()
+    return sorted([r[0] for r in rows])
 
 
 @app.get("/shifts", response_model=list[ShiftResponse])
