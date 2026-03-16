@@ -179,12 +179,29 @@ export default function WhatIf() {
             </tbody>
           </table>
 
+
+
           <h3 style={{ marginTop: "1rem" }}>Counterfactual</h3>
           <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
+            <thead>
+              <tr><th></th><th>Estimate</th><th>95% CI</th></tr>
+            </thead>
             <tbody>
-              <tr><td>Income</td><td>£{hindsightResult.counterfactual.cf_income.toFixed(2)}</td></tr>
-              <tr><td>Total Spent</td><td>£{hindsightResult.counterfactual.cf_spent.toFixed(2)}</td></tr>
-              <tr><td>Left Over</td><td>£{hindsightResult.counterfactual.cf_left_over.toFixed(2)}</td></tr>
+              <tr>
+                <td>Income</td>
+                <td>£{hindsightResult.counterfactual.cf_income.toFixed(2)}</td>
+                <td>£{hindsightResult.distribution.income.p2_5} – £{hindsightResult.distribution.income.p97_5}</td>
+              </tr>
+              <tr>
+                <td>Total Spent</td>
+                <td>£{hindsightResult.counterfactual.cf_spent.toFixed(2)}</td>
+                <td>£{hindsightResult.distribution.spending.p2_5} – £{hindsightResult.distribution.spending.p97_5}</td>
+              </tr>
+              <tr>
+                <td>Left Over</td>
+                <td>£{hindsightResult.counterfactual.cf_left_over.toFixed(2)}</td>
+                <td>£{hindsightResult.distribution.left_over.p2_5} – £{hindsightResult.distribution.left_over.p97_5}</td>
+              </tr>
             </tbody>
           </table>
 
@@ -255,6 +272,44 @@ export default function WhatIf() {
               <tr><td>Goal Contribution</td><td>£{forecastResult.baseline.goal_contribution.toFixed(2)}</td><td>£{forecastResult.planned.goal_contribution.toFixed(2)}</td></tr>
             </tbody>
           </table>
+
+
+
+          
+          {forecastResult.distribution && (
+            <>
+              <h3 style={{ marginTop: "1.5rem" }}>Planned — 95% Confidence Interval</h3>
+              <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
+                <thead>
+                  <tr><th></th><th>Lower (p2.5)</th><th>Median (p50)</th><th>Upper (p97.5)</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Income</td>
+                    <td>£{forecastResult.distribution.income.p2_5}</td>
+                    <td>£{forecastResult.distribution.income.p50}</td>
+                    <td>£{forecastResult.distribution.income.p97_5}</td>
+                  </tr>
+
+                  <tr>
+                    <td>Envelope Spending</td>
+                    <td>£{forecastResult.distribution.spending.p2_5}</td>
+                    <td>£{forecastResult.distribution.spending.p50}</td>
+                    <td>£{forecastResult.distribution.spending.p97_5}</td>
+                  </tr>
+
+                  <tr>
+                    <td>Left Over</td>
+                    <td>£{forecastResult.distribution.left_over.p2_5}</td>
+                    <td>£{forecastResult.distribution.left_over.p50}</td>
+                    <td>£{forecastResult.distribution.left_over.p97_5}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </>
+          )}
+
+          
 
           {/* goal projections */}
           {forecastResult.goals.length > 0 && (

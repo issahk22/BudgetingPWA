@@ -3,6 +3,7 @@
 import numpy as np
 import sqlite3
 import os
+import random
 from sklearn.linear_model import LinearRegression
 from causal_data import get_monthly_panel, validate_data_sufficiency
 
@@ -89,6 +90,62 @@ def predict_spending(spending_model: dict, income: float) -> float:
     return spending_model["intercept"] + spending_model["coefficients"][0] * income
 
 
+## Monte Carlo Layer ##
+
+def monte_carlo(income_model, spending_model, hours, n_simulations=1000): #1000 as from research paper 
+    """
+    returns percentile bands for income, spending, and left_over
+
+    """
+
+    income_residuals = income_model["residuals"]
+    spending_residuals = spending_model["residuals"]
+
+    #base prediction 
+    base_income = predict_income(income_model, hours)
+
+    sim_income = []
+    sim_spent = []
+    sim_left = []
+
+    for _ in range(n_simulations):
+
+        #one random residual from history for income and spending noise
+        u_income = random.choice(income_residuals)
+        u_spending = random.choice(spending_residuals)
+
+        #deterministic prediction (from SCM) + the sampled noise 
+        sim_income = base_income + u_income
+
+        #feeds noisy income through model b to calculate spending        
+        sim_spent = max(0.0, predict_spending(spending_model, sim_income) + u_spending) #max to prevent negative spending
+        sim_left_over = sim_income - sim_spent #amount left after spending
+
+        #stores each value in the list
+        sim_income.append(sim_income)
+        sim_spent.append(sim_spent)
+        sim_left.append(sim_left_over)
+
+
+    def _percentiles(data):
+
+        #95% confidence interval
+        s = sorted(data)
+        n = len(s)
+        
+        return {
+            "p2_5": round(s[int(n * 0.025)], 2),   # lower bound of 95% CI
+            "p50":  round(s[int(n * 0.500)], 2),   # median (central estimate)
+            "p97_5": round(s[int(n * 0.975)], 2),  # upper bound of 95% CI
+        }
+
+    return {
+        "income": _percentiles(sim_income),
+        "spending": _percentiles(sim_spent),
+        "left_over": _percentiles(sim_left),
+    }
+
+
 # HINDSIGHT COUNTERFACTUAL
 
 def counterfactual_hindsight(
@@ -162,6 +219,9 @@ def counterfactual_hindsight(
 
     actual_left_over = target["income"] - target["total_spent"]
 
+    
+    distribution = monte_carlo(income_model, spending_model, cf_hours)
+
     return {
 
         "actual": {
@@ -176,6 +236,9 @@ def counterfactual_hindsight(
             "cf_spent": round(cf_spent, 2),
             "cf_left_over": round(cf_left_over, 2),
         },
+
+        
+        "distribution": distribution,
 
         "model_fit": {
             "income_r2": round(income_model["r_squared"], 4),
@@ -358,6 +421,9 @@ def counterfactual_forecasting(
         })
 
 
+    
+    planned_distribution = monte_carlo(income_model, spending_model, planned_hours)
+
     return {
 
         "baseline": {
@@ -377,6 +443,9 @@ def counterfactual_forecasting(
             "available_to_save": round(planned_available, 2),
             "goal_contribution": round(planned_goal_contrib, 2),
         },
+
+      
+        "distribution": planned_distribution,
 
         "goals": goal_projections,
 
