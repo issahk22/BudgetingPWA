@@ -1,8 +1,15 @@
 
 
 import numpy as np
+import sqlite3
+import os
 from sklearn.linear_model import LinearRegression
 from causal_data import get_monthly_panel, validate_data_sufficiency
+
+HISTORY_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "history.db")
+
+### USE CASE 1 ###
+
 
 
 # ordinary least squares (OLS) via scikit-learn
@@ -137,7 +144,7 @@ def counterfactual_hindsight(
     income_model = ols_income_model(panel, shift_types)
     spending_model = ols_spending_model(panel)
 
-    #1. abduction - fetching the residual for target month (personal gap between actual and predicted)
+    #1. abduction -> fetching the residual for target month (personal gap between actual and predicted)
     residual_income = income_model["residuals"][target_idx]
     residual_spending = spending_model["residuals"][target_idx]
 
@@ -174,4 +181,208 @@ def counterfactual_hindsight(
             "income_r2": round(income_model["r_squared"], 4),
             "spending_r2": round(spending_model["r_squared"], 4),
         },
+    }
+
+
+### USE CASE 2 ###
+
+#average of paid fixed costs from history 
+def _get_fixed_costs_avg():
+    conn = sqlite3.connect(HISTORY_DB)
+
+    result = conn.execute("""
+                          
+        SELECT AVG(total) FROM (
+            SELECT SUM(amount) as total
+            FROM fixed_cost_history
+            WHERE was_paid = 1
+            GROUP BY month, year
+        )
+                          
+    """).fetchone()
+
+    conn.close()
+    return round(result[0], 2) if result and result[0] else 0.0
+
+#fetches latest state of savings goals. (converts month into numbers like 202603 to find recent month)
+def _get_goal_state():
+    
+    conn = sqlite3.connect(HISTORY_DB)
+
+    rows = conn.execute("""
+        SELECT g.goal_id, g.target_amount, g.amount_at_month_end
+        FROM goal_history g
+        INNER JOIN (
+            SELECT MAX(year * 100 + month) as latest FROM goal_history 
+        ) t ON (g.year * 100 + g.month) = t.latest
+                        
+    """).fetchall()
+
+    conn.close()
+
+    return [
+        {"goal_id": r[0], "target": r[1], "current_savings": r[2]}
+        for r in rows
+    ]
+
+
+#learns how much of the user's leftover money each month actually goes into savings against how much was available for them to put into savings 
+def _compute_savings_rate(panel, fixed_costs):
+    total_saved = 0.0
+    total_available = 0.0
+
+    for i in range(1, len(panel)):
+
+        #how much savings grew each month
+        contribution = panel[i]["savings"] - panel[i - 1]["savings"]
+
+        #how much was available after spending and fixed costs
+        available = panel[i]["income"] - panel[i]["total_spent"] - fixed_costs
+
+        total_saved += contribution
+        total_available += available
+
+    #ensures result does not go below 0 
+    return max(0.0, min(1.0, total_saved / total_available))
+
+
+
+def counterfactual_forecasting(
+    planned_hours: dict,  
+    ) -> dict:
+
+    """
+    
+    returns
+
+    {
+        "baseline": { income, fixed_costs, envelope_spending, available_to_save, goal_contribution, hours },
+        "planned":  { "" },
+        "goals": [ goal projections ],
+        "model_fit": { income_r2, spending_r2 }
+    }
+
+
+    """
+
+    #checks if there is enough data for the model to run 
+    panel, shift_types = get_monthly_panel()
+    check = validate_data_sufficiency(panel, len(shift_types))
+
+    if not check["sufficient"]:
+        return {
+            "error": check.get("error",
+                f"Need at least {check['minimum_required']} months of history, "
+                f"only have {check['months_available']}"
+            ),
+        }
+
+    #1. Abduction 
+    income_model = ols_income_model(panel, shift_types) #finding hourly rate per shift type and the intercept
+    spending_model = ols_spending_model(panel) #relationship between income and spending 
+
+    #residual calc for latest month 
+    residual_income = income_model["residuals"][-1] 
+    residual_spending = spending_model["residuals"][-1]
+
+
+    #2. Action
+    #builds dict of avg hours /shift type across historical months 
+    avg_hours = {}
+    for t in shift_types:
+        avg_hours[t] = round(float(np.mean([r["hours_by_type"].get(t, 0.0) for r in panel])), 1)
+
+    #3. Prediction
+
+
+    #baseline prediction for income and spending by running through model a and b 
+    baseline_income = predict_income(income_model, avg_hours) + residual_income
+    baseline_spent = max(0.0, predict_spending(spending_model, baseline_income) + residual_spending)
+
+    #predict with user's chosen hours
+    planned_income = predict_income(income_model, planned_hours) + residual_income
+    planned_spent = max(0.0, predict_spending(spending_model, planned_income) + residual_spending)
+
+    
+    fixed_costs = _get_fixed_costs_avg()
+
+    #calculates available money to save 
+    baseline_available = baseline_income - baseline_spent - fixed_costs
+    planned_available = planned_income - planned_spent - fixed_costs
+
+    #rate of money available going to savings 
+    savings_rate = _compute_savings_rate(panel, fixed_costs)
+
+    baseline_goal_contrib = baseline_available * savings_rate
+    planned_goal_contrib = planned_available * savings_rate
+
+    goals = _get_goal_state()
+
+    #sums up how much is still needed for each unmet goals
+    total_remaining = sum(max(0, g["target"] - g["current_savings"]) for g in goals)
+
+
+
+    goal_projections = []
+
+    for g in goals:
+
+        if g["current_savings"] >= g["target"]:
+            continue  # skip goals already met
+
+        #how much stiill needed to reach the goal    
+        remaining = max(0, g["target"] - g["current_savings"])
+
+        #calculates savings distribution (if a goal has more remaining it will get more money)
+        weight = remaining / total_remaining if total_remaining > 0 else 1.0 / max(len(goals), 1)
+
+
+        #applies calculated weight to each goals actual contribution amount
+        b_contrib = baseline_goal_contrib * weight
+        p_contrib = planned_goal_contrib * weight
+
+
+
+        goal_projections.append({
+
+            "goal_id": g["goal_id"],
+            "target": g["target"],
+            "current_savings": round(g["current_savings"], 2),
+            "baseline_contribution": round(b_contrib, 2),
+            "planned_contribution": round(p_contrib, 2),
+
+            #how close to goal after this month's contribution
+            "baseline_progress": round((g["current_savings"] + b_contrib) / g["target"] * 100, 1),
+            "planned_progress": round((g["current_savings"] + p_contrib) / g["target"] * 100, 1),
+
+        })
+
+
+    return {
+
+        "baseline": {
+            "hours": avg_hours,
+            "income": round(baseline_income, 2),
+            "fixed_costs": round(fixed_costs, 2),
+            "envelope_spending": round(baseline_spent, 2),
+            "available_to_save": round(baseline_available, 2),
+            "goal_contribution": round(baseline_goal_contrib, 2),
+        },
+
+        "planned": {
+            "hours": {t: planned_hours.get(t, 0.0) for t in shift_types},
+            "income": round(planned_income, 2),
+            "fixed_costs": round(fixed_costs, 2),
+            "envelope_spending": round(planned_spent, 2),
+            "available_to_save": round(planned_available, 2),
+            "goal_contribution": round(planned_goal_contrib, 2),
+        },
+
+        "goals": goal_projections,
+
+        "model_fit": {
+            "income_r2": round(income_model["r_squared"], 4),
+            "spending_r2": round(spending_model["r_squared"], 4),
+        },
+
     }
