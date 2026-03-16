@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 import sqlite3, os
-from counterfactual import counterfactual_hindsight
+from counterfactual import counterfactual_hindsight, counterfactual_forecasting
 from causal_data import get_monthly_panel
 
 router = APIRouter(prefix="/counterfactual")
@@ -79,12 +79,23 @@ def get_shifts_for_month(year: int, month: int):
     ]
 
 
+class ShiftPlanningRequest(BaseModel):
+    planned_hours: dict  # {"regular": 32, "night": 8, ...}
+
+
 @router.post("/hindsight")
 def hindsight(request: HindsightRequest):
     return counterfactual_hindsight(
         target_month=request.month,
         target_year=request.year,
         cf_hours=request.cf_hours,
+    )
+
+
+@router.post("/shift-planning")
+def shift_planning(request: ShiftPlanningRequest):
+    return counterfactual_forecasting(
+        planned_hours=request.planned_hours,
     )
 
 

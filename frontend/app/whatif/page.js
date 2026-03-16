@@ -6,21 +6,27 @@ import Link from "next/link";
 const API = "http://localhost:8000";
 
 function formatType(type) {
-  
   return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export default function WhatIf() {
   const [shiftTypes, setShiftTypes] = useState([]);
-  const [form, setForm] = useState({ month: "", year: "" });
+
+  // Hindsight
+  const [hindsightForm, setHindsightForm] = useState({ month: "", year: "" });
   const [cfHours, setCfHours] = useState({});
-
   const [monthSummary, setMonthSummary] = useState(null);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [hindsightResult, setHindsightResult] = useState(null);
+  const [hindsightError, setHindsightError] = useState(null);
+  const [hindsightLoading, setHindsightLoading] = useState(false);
 
-  // fetch available shift types on mount
+  // forecasting
+  const [forecastHours, setForecastHours] = useState({});
+  const [forecastResult, setForecastResult] = useState(null);
+  const [forecastError, setForecastError] = useState(null);
+  const [forecastLoading, setForecastLoading] = useState(false);
+
+  // fetch shift types on mount, initialise both hour dicts
   useEffect(() => {
     fetch(`${API}/counterfactual/shift-types`)
       .then((r) => r.json())
@@ -29,55 +35,76 @@ export default function WhatIf() {
         const initial = {};
         types.forEach((t) => (initial[t] = ""));
         setCfHours(initial);
+        setForecastHours({ ...initial });
       })
       .catch(() => {});
   }, []);
 
-  // fetch month summary when month + year are filled
+  // fetch month summary when month + year filled (for hindsight)
   useEffect(() => {
-    if (!form.month || !form.year) {
+    if (!hindsightForm.month || !hindsightForm.year) {
       setMonthSummary(null);
       return;
     }
-    fetch(`${API}/counterfactual/month-summary/${form.year}/${form.month}`)
+    fetch(`${API}/counterfactual/month-summary/${hindsightForm.year}/${hindsightForm.month}`)
       .then((r) => r.json())
       .then((data) => setMonthSummary(Object.keys(data).length ? data : null))
       .catch(() => setMonthSummary(null));
-  }, [form.month, form.year]);
+  }, [hindsightForm.month, hindsightForm.year]);
 
-  async function handleSubmit(e) {
+  // Hindsight submit
+  async function handleHindsightSubmit(e) {
     e.preventDefault();
-    setLoading(true);
-    setResult(null);
-    setError(null);
+    setHindsightLoading(true);
+    setHindsightResult(null);
+    setHindsightError(null);
 
-    // build cf_hours dict with parsed numbers
     const parsedHours = {};
-    shiftTypes.forEach((t) => {
-      parsedHours[t] = parseFloat(cfHours[t]) || 0;
-    });
+    shiftTypes.forEach((t) => { parsedHours[t] = parseFloat(cfHours[t]) || 0; });
 
     try {
       const res = await fetch(`${API}/counterfactual/hindsight`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          month: parseInt(form.month),
-          year: parseInt(form.year),
+          month: parseInt(hindsightForm.month),
+          year: parseInt(hindsightForm.year),
           cf_hours: parsedHours,
         }),
       });
-
       const data = await res.json();
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setResult(data);
-      }
-    } catch (err) {
-      setError("Failed to reach the backend.");
+      if (data.error) setHindsightError(data.error);
+      else setHindsightResult(data);
+    } catch {
+      setHindsightError("Failed to reach the backend.");
     } finally {
-      setLoading(false);
+      setHindsightLoading(false);
+    }
+  }
+
+  // Forecasting submit
+  async function handleForecastSubmit(e) {
+    e.preventDefault();
+    setForecastLoading(true);
+    setForecastResult(null);
+    setForecastError(null);
+
+    const parsedHours = {};
+    shiftTypes.forEach((t) => { parsedHours[t] = parseFloat(forecastHours[t]) || 0; });
+
+    try {
+      const res = await fetch(`${API}/counterfactual/shift-planning`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planned_hours: parsedHours }),
+      });
+      const data = await res.json();
+      if (data.error) setForecastError(data.error);
+      else setForecastResult(data);
+    } catch {
+      setForecastError("Failed to reach the backend.");
+    } finally {
+      setForecastLoading(false);
     }
   }
 
@@ -85,23 +112,26 @@ export default function WhatIf() {
     <div style={{ padding: "2rem", maxWidth: "650px" }}>
       <Link href="/dashboard">Back to Dashboard</Link>
       <h1>What If?</h1>
-      <p>Hindsight counterfactual</p>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "1rem" }}>
+      {/*Hindsight */}
+      <h2>Hindsight</h2>
+      
+
+      <form onSubmit={handleHindsightSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "1rem" }}>
 
         <label>
           Month (1-12)
-          <input type="number" required min="1" max="12" value={form.month}
-            onChange={(e) => setForm({ ...form, month: e.target.value })} />
+          <input type="number" required min="1" max="12" value={hindsightForm.month}
+            onChange={(e) => setHindsightForm({ ...hindsightForm, month: e.target.value })} />
         </label>
 
         <label>
           Year
-          <input type="number" required min="2020" value={form.year}
-            onChange={(e) => setForm({ ...form, year: e.target.value })} />
+          <input type="number" required min="2020" value={hindsightForm.year}
+            onChange={(e) => setHindsightForm({ ...hindsightForm, year: e.target.value })} />
         </label>
 
-        {/* month summary */}
+        {/* actual month summary */}
         {monthSummary && monthSummary.hours && (
           <table border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%", marginTop: "0.25rem" }}>
             <tbody>
@@ -115,11 +145,11 @@ export default function WhatIf() {
           </table>
         )}
 
-        {!monthSummary && form.month && form.year && (
+        {!monthSummary && hindsightForm.month && hindsightForm.year && (
           <p style={{ color: "grey" }}>No data found for this month.</p>
         )}
 
-        {/* dynamic counterfactual hour inputs — one per shift type */}
+        {/* counterfactual hour inputs */}
         {shiftTypes.map((type) => (
           <label key={type}>
             Counterfactual {formatType(type)} Hours
@@ -128,42 +158,132 @@ export default function WhatIf() {
           </label>
         ))}
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Calculating..." : "Run What If"}
+        <button type="submit" disabled={hindsightLoading}>
+          {hindsightLoading ? "Calculating..." : "Run Hindsight"}
         </button>
       </form>
 
-      {error && <p style={{ color: "red", marginTop: "1rem" }}>{error}</p>}
+      {hindsightError && <p style={{ color: "red", marginTop: "1rem" }}>{hindsightError}</p>}
 
-      {result && (
+      {hindsightResult && (
         <div style={{ marginTop: "2rem" }}>
-
-          <h2>Actual ({String(form.month).padStart(2, "0")}/{form.year})</h2>
+          <h3>Actual ({String(hindsightForm.month).padStart(2, "0")}/{hindsightForm.year})</h3>
           <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
             <tbody>
-              {result.actual.hours && Object.entries(result.actual.hours).map(([type, hrs]) => (
+              {hindsightResult.actual.hours && Object.entries(hindsightResult.actual.hours).map(([type, hrs]) => (
                 <tr key={type}><td>{formatType(type)} Hours</td><td>{hrs}h</td></tr>
               ))}
-              <tr><td>Income</td><td>£{result.actual.income.toFixed(2)}</td></tr>
-              <tr><td>Total Spent</td><td>£{result.actual.total_spent.toFixed(2)}</td></tr>
-              <tr><td>Left Over</td><td>£{result.actual.left_over.toFixed(2)}</td></tr>
+              <tr><td>Income</td><td>£{hindsightResult.actual.income.toFixed(2)}</td></tr>
+              <tr><td>Total Spent</td><td>£{hindsightResult.actual.total_spent.toFixed(2)}</td></tr>
+              <tr><td>Left Over</td><td>£{hindsightResult.actual.left_over.toFixed(2)}</td></tr>
             </tbody>
           </table>
 
-          <h2 style={{ marginTop: "1.5rem" }}>Counterfactual</h2>
+          <h3 style={{ marginTop: "1rem" }}>Counterfactual</h3>
           <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
             <tbody>
-              <tr><td>Income</td><td>£{result.counterfactual.cf_income.toFixed(2)}</td></tr>
-              <tr><td>Total Spent</td><td>£{result.counterfactual.cf_spent.toFixed(2)}</td></tr>
-              <tr><td>Left Over</td><td>£{result.counterfactual.cf_left_over.toFixed(2)}</td></tr>
+              <tr><td>Income</td><td>£{hindsightResult.counterfactual.cf_income.toFixed(2)}</td></tr>
+              <tr><td>Total Spent</td><td>£{hindsightResult.counterfactual.cf_spent.toFixed(2)}</td></tr>
+              <tr><td>Left Over</td><td>£{hindsightResult.counterfactual.cf_left_over.toFixed(2)}</td></tr>
             </tbody>
           </table>
 
-          <h2 style={{ marginTop: "1.5rem" }}>Model Fit</h2>
+
+
+          <h3 style={{ marginTop: "1rem" }}>Model Fit</h3>
+
           <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
             <tbody>
-              <tr><td>Income R²</td><td>{result.model_fit.income_r2}</td></tr>
-              <tr><td>Spending R²</td><td>{result.model_fit.spending_r2}</td></tr>
+              <tr><td>Income R²</td><td>{hindsightResult.model_fit.income_r2}</td></tr>
+              <tr><td>Spending R²</td><td>{hindsightResult.model_fit.spending_r2}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <hr style={{ margin: "2rem 0" }} />
+
+
+
+      {/* forecasting */}
+      <h2>Forecasting</h2>
+      
+
+
+      <form onSubmit={handleForecastSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "1rem" }}>
+
+        {/* planned hour inputs  (one per shift type) */}
+        {shiftTypes.map((type) => (
+          <label key={type}>
+            Planned {formatType(type)} Hours
+            <input type="number" required min="0" step="0.5" value={forecastHours[type] || ""}
+              onChange={(e) => setForecastHours({ ...forecastHours, [type]: e.target.value })} />
+          </label>
+        ))}
+
+        <button type="submit" disabled={forecastLoading}>
+          {forecastLoading ? "Calculating..." : "Run Forecast"}
+        </button>
+      </form>
+
+      {forecastError && <p style={{ color: "red", marginTop: "1rem" }}>{forecastError}</p>}
+
+      {forecastResult && (
+        <div style={{ marginTop: "2rem" }}>
+
+          {/* baseline vs planned income/spending */}
+          <h3>Baseline vs Planned</h3>
+
+          <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
+            <thead>
+              <tr><th></th><th>Baseline (avg month)</th><th>Planned</th></tr>
+            </thead>
+            <tbody>
+
+              {shiftTypes.map((t) => (
+                <tr key={t}>
+                  <td>{formatType(t)} Hours</td>
+                  <td>{forecastResult.baseline.hours[t] ?? 0}h</td>
+                  <td>{forecastResult.planned.hours[t] ?? 0}h</td>
+                </tr>
+                
+              ))}
+              <tr><td>Income</td><td>£{forecastResult.baseline.income.toFixed(2)}</td><td>£{forecastResult.planned.income.toFixed(2)}</td></tr>
+              <tr><td>Fixed Costs</td><td>£{forecastResult.baseline.fixed_costs.toFixed(2)}</td><td>£{forecastResult.planned.fixed_costs.toFixed(2)}</td></tr>
+              <tr><td>Envelope Spending</td><td>£{forecastResult.baseline.envelope_spending.toFixed(2)}</td><td>£{forecastResult.planned.envelope_spending.toFixed(2)}</td></tr>
+              <tr><td>Available to Save</td><td>£{forecastResult.baseline.available_to_save.toFixed(2)}</td><td>£{forecastResult.planned.available_to_save.toFixed(2)}</td></tr>
+              <tr><td>Goal Contribution</td><td>£{forecastResult.baseline.goal_contribution.toFixed(2)}</td><td>£{forecastResult.planned.goal_contribution.toFixed(2)}</td></tr>
+            </tbody>
+          </table>
+
+          {/* goal projections */}
+          {forecastResult.goals.length > 0 && (
+            <>
+              <h3 style={{ marginTop: "1.5rem" }}>Goal Projections</h3>
+              <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
+                <thead>
+                  <tr><th>Goal</th><th>Current</th><th>Target</th><th>Baseline Progress</th><th>Planned Progress</th></tr>
+                </thead>
+                <tbody>
+                  {forecastResult.goals.map((g) => (
+                    <tr key={g.goal_id}>
+                      <td>{g.goal_id}</td>
+                      <td>£{g.current_savings.toFixed(2)}</td>
+                      <td>£{g.target.toFixed(2)}</td>
+                      <td>{g.baseline_progress}%</td>
+                      <td>{g.planned_progress}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          <h3 style={{ marginTop: "1.5rem" }}>Model Fit</h3>
+          <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
+            <tbody>
+              <tr><td>Income R²</td><td>{forecastResult.model_fit.income_r2}</td></tr>
+              <tr><td>Spending R²</td><td>{forecastResult.model_fit.spending_r2}</td></tr>
             </tbody>
           </table>
 
