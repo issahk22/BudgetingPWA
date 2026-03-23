@@ -1,11 +1,13 @@
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), "counterfactual"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "envelope_optimisation"))
 
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from counterfactual_router import router as counterfactual_router
+from envelope_router import router as envelope_router
 
 
 from database import Base, engine, get_db
@@ -32,6 +34,7 @@ HistoryBase.metadata.create_all(bind=history_engine)
 app = FastAPI()
 
 app.include_router(counterfactual_router)
+app.include_router(envelope_router)
 
 # allows the frontend to make requests to the backend
 app.add_middleware(
