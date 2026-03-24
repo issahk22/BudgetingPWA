@@ -19,12 +19,17 @@ export default function Envelopes() {
     .filter((acc) => acc.include_in_budget)
     .reduce((sum, acc) => sum + (parseFloat(acc.balance) || 0), 0);
 
+  // deducts unpaid fixed costs from amount remaining
+  const unpaidFixedCosts = data.fixedCosts
+    .filter((cost) => !cost.paid)
+    .reduce((sum, cost) => sum + (parseFloat(cost.amount) || 0), 0);
+
   const totalAllocated = data.envelopes.reduce(
     (sum, env) => sum + (parseFloat(env.amount) || 0),
     0
   );
 
-  const amntRemaining = totalBudget - totalAllocated;
+  const amntRemaining = totalBudget - unpaidFixedCosts - totalAllocated;
 
 
 
