@@ -1,0 +1,193 @@
+/* Shared dark theme styles for all onboarding pages */
+
+.ob-page {
+  min-height: 100vh;
+  background-color: #000000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.5rem;
+  padding-top: 4rem;
+}
+
+.ob-card {
+  background-color: #323232;
+  border: 1px solid #374151;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  width: 100%;
+  max-width: 32rem;
+}
+
+/* Typography */
+.ob-card h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 1.5rem;
+}
+
+.ob-card h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.ob-card label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.ob-card p {
+  color: #6b7280;
+}
+
+.ob-card span {
+  color: #ffffff;
+}
+
+/* Inputs, selects */
+.ob-card input[type="text"],
+.ob-card input[type="number"],
+.ob-card input[type="date"],
+.ob-card select {
+  padding: 0.5rem 0.75rem;
+  background-color: #374151;
+  border: 1px solid #4b5563;
+  border-radius: 0.5rem;
+  color: #ffffff;
+  font-size: 0.875rem;
+}
+
+.ob-card input[type="text"]:focus,
+.ob-card input[type="number"]:focus,
+.ob-card input[type="date"]:focus,
+.ob-card select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #00BBA8;
+}
+
+.ob-card input::placeholder {
+  color: #6b7280;
+}
+
+/* Checkbox */
+.ob-card input[type="checkbox"] {
+  accent-color: #00BBA8;
+}
+
+/* Primary button (Next / Finish) */
+.ob-card .btn-primary {
+  background-color: #00BBA8;
+  color: #ffffff;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.ob-card .btn-primary:hover {
+  background-color: #009e8e;
+}
+
+/* Outline button (Add) */
+.ob-card .btn-outline {
+  background: transparent;
+  border: 1px solid #00BBA8;
+  color: #00BBA8;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.ob-card .btn-outline:hover {
+  background-color: rgba(0, 187, 168, 0.1);
+}
+
+/* List items */
+.ob-card .list-item {
+  border-bottom: 1px solid #374151;
+}
+
+/* Budget bar on envelopes page */
+.ob-card .budget-bar {
+  background-color: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.ob-card .budget-bar .budget-positive {
+  color: #00BBA8;
+}
+
+.ob-card .budget-bar .budget-negative {
+  color: #ef4444;
+}
+
+.ob-card .budget-bar .budget-label {
+  color: #9ca3af;
+}
+
+/* Shift type pills */
+.ob-card .pill {
+  background-color: #374151;
+  border: 1px solid #4b5563;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+}
+
+.ob-card .pill input {
+  background: transparent;
+  color: #ffffff;
+  font-size: 0.875rem;
+  width: 6rem;
+  outline: none;
+  border: none;
+  padding: 0;
+}
+
+/* Paid indicator */
+.ob-card .paid-tag {
+  color: #00BBA8;
+}
+
+/* Remove button */
+.ob-card .btn-remove {
+  color: #ef4444;
+  font-size: 0.75rem;
+  background: none;
+  border: none;
+  margin-left: 1rem;
+  cursor: pointer;
+}
+
+/* Pill remove */
+.ob-card .pill-remove {
+  color: #f87171;
+  font-size: 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: 0.25rem;
+}
+
+.ob-card .pill-remove:hover {
+  color: #ef4444;
+}
+
+/* Account type label */
+.ob-card .type-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-transform: capitalize;
+}

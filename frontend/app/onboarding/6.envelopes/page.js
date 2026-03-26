@@ -134,19 +134,18 @@ export default function Envelopes() {
 
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-start justify-center p-6 pt-16">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 w-full max-w-lg">
+    <div className="ob-card">
 
         <h1
-         className="text-2xl font-semibold text-gray-800 mb-6">
+         className="text-2xl font-semibold mb-6">
         Envelopes
           </h1>
 
 
 
-        <div className="mb-5 p-3 rounded bg-gray-50 border border-gray-200 text-sm flex justify-between">
-          <span className="text-gray-500">Total budget: £{totalBudget.toFixed(2)}</span>
-          <span className={amntRemaining < 0 ? "font-semibold text-red-600" : "font-semibold text-green-600"}>
+        <div className="budget-bar mb-5 text-sm flex justify-between">
+          <span className="budget-label">Total budget: £{totalBudget.toFixed(2)}</span>
+          <span className={amntRemaining < 0 ? "font-semibold budget-negative" : "font-semibold budget-positive"}>
             Left to budget: £{amntRemaining.toFixed(2)}
           </span>
         </div>
@@ -162,7 +161,7 @@ export default function Envelopes() {
             value={input.name}
             onChange={(e) => setInput({ ...input, name: e.target.value })}
 
-            className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 rounded px-3 py-2 text-sm"
           />
 
           <input
@@ -173,32 +172,31 @@ export default function Envelopes() {
             value={input.amount}
             onChange={(e) => setInput({ ...input, amount: e.target.value })}
 
-            className="w-32 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-32 rounded px-3 py-2 text-sm"
           />
 
         </div>
 
-        <button onClick={addEnvelope} className="border border-blue-600 text-blue-600 px-4 py-2 rounded text-sm font-medium hover:bg-blue-50 w-full mb-3">
+        <button onClick={addEnvelope} className="btn-outline w-full mb-3">
           Add Envelope
         </button>
 
         {/* list of added envelopes with delete buttons */}
         {data.envelopes.map((env, i) => (
-          <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-gray-100">
+          <div key={i} className="list-item flex justify-between items-center text-sm py-1">
             <span>{env.name}: £{env.amount}</span>
-            <button onClick={() => removeEnvelope(i)} className="text-red-500 text-xs">Remove</button>
+            <button onClick={() => removeEnvelope(i)} className="btn-remove">Remove</button>
           </div>
         ))}
 
         <button
           onClick={handleFinish}
 
-          className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 w-full mt-6"
+          className="btn-primary w-full mt-6"
         >
           Finish
         </button>
 
-      </div>
     </div>
   );
 }

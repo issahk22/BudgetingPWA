@@ -35,10 +35,9 @@ export default function Accounts() {
 
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-start justify-center p-6 pt-16">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 w-full max-w-lg">
+    <div className="ob-card">
 
-        <h1 className="text-2xl font-semibold text-gray-800 mb-6">Accounts</h1>
+        <h1 className="text-2xl font-semibold mb-6">Accounts</h1>
 
         <div className="flex gap-2 mb-2">
 
@@ -48,7 +47,7 @@ export default function Accounts() {
             maxLength={30}
             value={input.name}
             onChange={(e) => setInput({ ...input, name: e.target.value })}
-            className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 rounded px-3 py-2 text-sm"
           />
 
           <input
@@ -58,13 +57,13 @@ export default function Accounts() {
             step="0.01"
             value={input.balance}
             onChange={(e) => setInput({ ...input, balance: e.target.value })}
-            className="w-28 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-28 rounded px-3 py-2 text-sm"
           />
 
           <select
             value={input.type}
             onChange={(e) => setInput({ ...input, type: e.target.value })}
-            className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="rounded px-3 py-2 text-sm"
           >
             <option value="bank">Bank</option>
             <option value="pot">Pot</option>
@@ -74,7 +73,7 @@ export default function Accounts() {
 
         <button
           onClick={addAccount}
-          className="border border-blue-600 text-blue-600 px-4 py-2 rounded text-sm font-medium hover:bg-blue-50 w-full mb-4"
+          className="btn-outline w-full mb-4"
         >
           Add Account
         </button>
@@ -82,22 +81,20 @@ export default function Accounts() {
 
         {/* list of added accounts */}
         {data.accounts.map((acc, i) => (
-          <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-gray-100">
-            <span>{acc.name}: £{acc.balance}</span>
-            <span className="text-xs text-gray-400 capitalize">{acc.type}</span>
-            <button onClick={() => removeAccount(i)} className="text-red-500 text-xs">Remove</button>
+          <div key={i} className="list-item flex justify-between items-center text-sm py-2 gap-4">
+            <span className="flex-1"><span className="type-label">({acc.type})</span> {acc.name}: £{acc.balance}</span>
+            <button onClick={() => removeAccount(i)} className="btn-remove">Remove</button>
           </div>
         ))}
 
 
         <button
           onClick={() => router.push("/onboarding/5.costs")}
-          className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 w-full mt-6"
+          className="btn-primary w-full mt-6"
         >
           Next
         </button>
 
-      </div>
     </div>
   );
 }

@@ -59,20 +59,19 @@ export default function Employment() {
 
   return (
 
-    <div className="min-h-screen bg-gray-100 flex items-start justify-center p-6 pt-16">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 w-full max-w-lg">
+    <div className="ob-card">
 
-        <h1 className="text-2xl font-semibold text-gray-800 mb-6">Employment</h1>
+        <h1 className="text-2xl font-semibold mb-6">Employment</h1>
 
         <div className="flex gap-2 mb-3">
 
           <input
             type="text"
-            placeholder="Job name"
+            placeholder="e.g. Nurse"
             maxLength={30}
             value={input.job_name}
             onChange={(e) => setInput({ ...input, job_name: e.target.value })}
-            className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 rounded px-3 py-2 text-sm"
           />
 
           <input
@@ -82,33 +81,33 @@ export default function Employment() {
             step="0.01"
             value={input.base_hourly_rate}
             onChange={(e) => setInput({ ...input, base_hourly_rate: e.target.value })}
-            className="w-36 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-36 rounded px-3 py-2 text-sm"
           />
 
         </div>
 
         <button
           onClick={addJob}
-          className="border border-blue-600 text-blue-600 px-4 py-2 rounded text-sm font-medium hover:bg-blue-50 w-full mb-4"
+          className="btn-outline w-full mb-4"
         >
           Add Job
         </button>
 
         {data.jobs.map((job, i) => (
-          <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-gray-100">
+          <div key={i} className="list-item flex justify-between items-center text-sm py-1">
             <span>{job.job_name}: £{parseFloat(job.base_hourly_rate).toFixed(2)}/hr</span>
-            <button onClick={() => removeJob(i)} className="text-red-500 text-xs">Remove</button>
+            <button onClick={() => removeJob(i)} className="btn-remove">Remove</button>
           </div>
         ))}
 
 
         {/* Shift Types */}
-        <h2 className="text-lg font-semibold text-gray-800 mt-6 mb-3">Shift Types</h2>
-        <p className="text-xs text-gray-500 mb-2">Max {MAX_SHIFT_TYPES} types. Click a type to edit it.</p>
+        <h2 className="text-lg font-semibold mt-6 mb-3">Shift Types</h2>
+        <p className="text-xs mb-2">Max {MAX_SHIFT_TYPES} types. Click a type to edit it.</p>
 
         <div className="flex flex-wrap gap-2 mb-3">
           {data.shiftTypes.map((type, i) => (
-            <div key={i} className="flex items-center gap-1 bg-gray-100 border border-gray-200 rounded-full px-3 py-1">
+            <div key={i} className="pill flex items-center gap-1">
               {editingType === i ? (
                 <input
                   type="text"
@@ -116,18 +115,17 @@ export default function Employment() {
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={() => saveEditType(i)}
                   onKeyDown={(e) => e.key === "Enter" && saveEditType(i)}
-                  className="bg-transparent text-sm w-24 focus:outline-none"
                   autoFocus
                 />
               ) : (
                 <span
-                  className="text-sm text-gray-700 cursor-pointer"
+                  className="text-sm cursor-pointer"
                   onClick={() => startEditType(i)}
                 >
                   {type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                 </span>
               )}
-              <button onClick={() => removeShiftType(i)} className="text-red-400 hover:text-red-600 text-xs ml-1">✕</button>
+              <button onClick={() => removeShiftType(i)} className="pill-remove">✕</button>
             </div>
           ))}
         </div>
@@ -141,11 +139,11 @@ export default function Employment() {
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addShiftType()}
-              className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 rounded px-3 py-2 text-sm"
             />
             <button
               onClick={addShiftType}
-              className="border border-blue-600 text-blue-600 px-4 py-2 rounded text-sm font-medium hover:bg-blue-50"
+              className="btn-outline"
             >
               Add
             </button>
@@ -155,12 +153,11 @@ export default function Employment() {
 
         <button
           onClick={() => router.push("/onboarding/3.goals")}
-          className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 w-full mt-6"
+          className="btn-primary w-full mt-6"
         >
           Next
         </button>
 
-      </div>
     </div>
   );
 }
