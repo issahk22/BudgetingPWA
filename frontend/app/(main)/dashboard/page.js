@@ -32,7 +32,25 @@ export default function Dashboard() {
   const [submittingShift, setSubmittingShift] = useState(false);
   const [shiftTypes, setShiftTypes] = useState([]);
 
+  //controls the + dropdown menu visibility
   const [showAddMenu, setShowAddMenu] = useState(false);
+
+  //end month flow: modal visibility, net income input, and loading state
+  const [showEndMonth, setShowEndMonth] = useState(false);
+  const [netIncome, setNetIncome] = useState("");
+  const [closingMonth, setClosingMonth] = useState(false);
+
+  //post month close allocations modal: envelope amounts, ML recommendations, and loading state
+  const [showAllocations, setShowAllocations] = useState(false);
+  const [allocations, setAllocations] = useState({});
+  const [recommendations, setRecommendations] = useState(null);
+  const [savingAllocations, setSavingAllocations] = useState(false);
+
+  // tracks which month the dashboard is currently viewing (defaults to current month)
+  const [viewDate, setViewDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
 
   const [loading, setLoading] = useState(true);
 
@@ -92,6 +110,28 @@ export default function Dashboard() {
   const totalBalance = accounts
     .filter((acc) => acc.include_in_budget)
     .reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
+
+  const viewMonthLabel = viewDate.toLocaleString("default", { month: "long", year: "numeric" });
+
+  //If there is at least 1 month history, a back button will appear
+  const hasHistory = shifts.some((s) => s.date && new Date(s.date) < viewDate) ||
+    Object.values(transactions).flat().some((tx) => tx.date && new Date(tx.date) < viewDate);
+
+  // hides the forward arrow when already on the current month
+  const isCurrentMonth = (() => {
+    const now = new Date();
+    return viewDate.getMonth() === now.getMonth() && viewDate.getFullYear() === now.getFullYear();
+  })();
+
+  // navigate back one month
+  function goBack() {
+    setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  }
+
+  // navigate forward one month (only shown when not on current month)
+  function goForward() {
+    setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  }
 
 
   async function handlePaidToggle(cost) {
@@ -304,6 +344,101 @@ export default function Dashboard() {
 
   const totalMonthlyPay = shifts.reduce((sum, s) => sum + parseFloat(s.total_pay), 0);
 
+  //closes the current month, archives data to history db and resets live DB for the new month
+  async function handleEndMonth(e) {
+    e.preventDefault();
+    setClosingMonth(true);
+
+    try {
+      const now = new Date();
+      const res = await fetch(`${API}/month-close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+          net_income: parseFloat(netIncome),
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        console.error("Month close failed:", err.detail);
+        return;
+      }
+
+      const income = parseFloat(netIncome);
+      setShowEndMonth(false);
+      setNetIncome("");
+
+      //refresh envelopes and accounts after reset 
+      const [envsRes, accsRes] = await Promise.all([
+        fetch(`${API}/envelopes`),
+        fetch(`${API}/accounts`),
+      ]);
+      const freshEnvelopes = await envsRes.json();
+      const freshAccounts = await accsRes.json();
+      setEnvelopes(freshEnvelopes);
+      setAccounts(freshAccounts);
+
+      //prefill allocation inputs with current allocated amounts
+      const allocs = {};
+      freshEnvelopes.forEach((env) => { allocs[env.id] = parseFloat(env.allocated_amount).toFixed(2); });
+      setAllocations(allocs);
+
+      //attempt ML recommendations 
+      const fixedTotal = fixedCosts.reduce((sum, c) => sum + parseFloat(c.amount), 0);
+      try {
+        const recRes = await fetch(`${API}/envelopes/recommendations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ income, fixed_costs: fixedTotal, goal_contribution: 0 }),
+        });
+        const recData = await recRes.json();
+        if (recData.recommendations) {
+          setRecommendations(recData.recommendations);
+        } else {
+          //reccommendations column hidden if not enough history (needs >=3months)
+          setRecommendations(null);
+        }
+      } catch {
+        setRecommendations(null);
+      }
+
+      setShowAllocations(true);
+    } catch (err) {
+      console.error("Failed to close month:", err);
+    } finally {
+      setClosingMonth(false);
+    }
+  }
+
+
+  //saves each envelope's new allocated amount for the new month, blank fields save as 0
+  async function handleSaveAllocations(e) {
+    e.preventDefault();
+    setSavingAllocations(true);
+
+    try {
+      await Promise.all(
+        envelopes.map((env) =>
+          fetch(`${API}/envelopes/${env.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ allocated_amount: parseFloat(allocations[env.id]) || 0 }),
+          })
+        )
+      );
+
+      setShowAllocations(false);
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to save allocations:", err);
+    } finally {
+      setSavingAllocations(false);
+    }
+  }
+
 
   if (loading) return <p className="text-muted text-lg">Loading...</p>;
 
@@ -485,18 +620,136 @@ export default function Dashboard() {
         )}
 
 
+        {/* End Month */}
+        {showEndMonth && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50" onClick={() => setShowEndMonth(false)}>
+          <form className="bg-card border border-border rounded-xl p-5 w-full max-w-md flex flex-col gap-3" onClick={(e) => e.stopPropagation()} onSubmit={handleEndMonth}>
+            <h3 className="text-text mb-1">End Month</h3>
+            <p className="text-sm text-muted">This will close the current month and archive all data to history.</p>
+
+            <label className="flex flex-col gap-1 text-sm text-muted">
+              Net Income (for next month)
+              <input type="number" required min="0" step="0.01" value={netIncome} onChange={(e) => setNetIncome(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+            </label>
+
+            <button type="submit" disabled={closingMonth}
+              className="w-full px-4 py-2 rounded-lg bg-red-600 text-white font-medium text-sm hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              {closingMonth ? "Closing..." : "Confirm End Month"}
+            </button>
+          </form>
+          </div>
+        )}
+
+
+
+        {/* Envelope allocations post end month */}
+        {showAllocations && (() => {
+          const primaryAccount = accounts.find((a) => a.include_in_budget);
+          const accountBalance = primaryAccount ? parseFloat(primaryAccount.balance) : 0;
+          const fixedTotal = fixedCosts.reduce((sum, c) => sum + parseFloat(c.amount), 0);
+          const availableBudget = accountBalance - fixedTotal;
+          const allocatedSum = Object.values(allocations).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
+          const remaining = availableBudget - allocatedSum;
+          const isNegativeAvailable = availableBudget < 0;
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50" onClick={() => setShowAllocations(false)}>
+            <form className="bg-card border border-border rounded-xl p-5 w-full max-w-lg flex flex-col gap-3 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} onSubmit={handleSaveAllocations}>
+              <h3 className="text-text mb-1">Envelope Allocations</h3>
+
+              {/* Budget summary */}
+              <div className="bg-gray-800 rounded-lg px-4 py-3 flex flex-col gap-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted">Account balance</span>
+                  <span className="text-text">£{accountBalance.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">Fixed costs</span>
+                  <span className="text-negative">-£{fixedTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-700 pt-1 mt-1 font-medium">
+                  <span className="text-muted">Available to budget</span>
+                  <span className={isNegativeAvailable ? "text-negative" : "text-text"}>£{availableBudget.toFixed(2)}</span>
+                </div>
+                {!isNegativeAvailable && (
+                  <div className="flex justify-between">
+                    <span className="text-muted">Remaining unallocated</span>
+                    <span className={remaining < 0 ? "text-negative" : "text-accent"}>£{remaining.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+
+              {isNegativeAvailable ? (
+                <p className="text-sm text-negative">Your fixed costs exceed your account balance. Resolve this before setting allocations.</p>
+              ) : (
+                <>
+                  <div className="flex text-xs text-muted font-medium border-b border-gray-700 pb-1 mb-1">
+                    <span className="flex-1">Envelope</span>
+                    <span className="w-28 text-right">Amount (£)</span>
+                    {recommendations && <span className="w-32 text-right text-accent">Recommended (£)</span>}
+                  </div>
+
+                  {envelopes.map((env) => (
+                    <div key={env.id} className="flex items-center gap-2">
+                      <span className="flex-1 text-sm text-text">{env.envelope_name}</span>
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={allocations[env.id] ?? ""}
+                        onChange={(e) => setAllocations((prev) => ({ ...prev, [env.id]: e.target.value }))}
+                        className="w-28 px-3 py-1.5 bg-gray-700 border border-border rounded-lg text-text text-sm text-right focus:outline-none focus:ring-2 focus:ring-accent"
+                      />
+                      {recommendations && (
+                        <span className="w-32 text-right text-sm text-accent">
+                          {recommendations[env.envelope_name] !== undefined
+                            ? `£${recommendations[env.envelope_name].toFixed(2)}`
+                            : "—"}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+
+                  {recommendations && (
+                    <p className="text-xs text-muted">Recommendations based on your spending history.</p>
+                  )}
+
+                  <button type="submit" disabled={savingAllocations}
+                    className="w-full px-4 py-2 rounded-lg bg-accent text-white font-medium text-sm hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2">
+                    {savingAllocations ? "Saving..." : "Save Allocations"}
+                  </button>
+                </>
+              )}
+            </form>
+            </div>
+          );
+        })()}
+
+
+
+
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-[40px] font-bold text-text mb-1 inline-block border-b-4 border-accent pb-1">Dashboard</h1>
-          <div className="mb-5"></div>
 
-          <div className="relative">
-            <button
-              className="px-4 py-2 rounded-lg font-medium text-sm transition-colors bg-accent text-white hover:bg-accent-hover"
-              onClick={() => setShowAddMenu((v) => !v)}
-            >
-              +
-            </button>
+          <div className="flex items-center gap-2 mt-6 mb-5">
+            {hasHistory && (
+              <button onClick={goBack} className="text-muted hover:text-accent transition-colors text-[28px] font-bold leading-none">‹</button>
+            )}
+            <span className="text-[28px] font-bold text-[#00BBA8] font-[var(--font-inter)]">{viewMonthLabel}</span>
+            {!isCurrentMonth && (
+              <button onClick={goForward} className="text-muted hover:text-accent transition-colors text-[28px] font-bold leading-none">›</button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+
+            <div className="relative">
+              <button
+                className="px-4 py-2 rounded-lg font-medium text-sm transition-colors bg-accent text-white hover:bg-accent-hover"
+                onClick={() => setShowAddMenu((v) => !v)}
+              >
+                +
+              </button>
 
             {showAddMenu && (
               <>
@@ -523,7 +776,17 @@ export default function Dashboard() {
                 </div>
               </>
             )}
+            </div>
+
+            <button
+              className="px-4 py-2 rounded-lg font-medium text-sm border border-red-600 text-red-500 bg-black hover:bg-red-950 transition-colors"
+              onClick={() => setShowEndMonth(true)}
+            >
+              End Month
+            </button>
+
           </div>
+
         </div>
 
         {/* 2 Column layoug */}
