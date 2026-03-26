@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+@theme {
+  --color-surface: #000000;
+  --color-card: #323232;
+  --color-border: #374151;
+  --color-accent: #00BBA8;
+  --color-accent-hover: #009e8e;
+  --color-muted: #9ca3af;
+  --color-text: #f9fafb;
+  --color-positive: #16a34a;
+  --color-negative: #dc2626;
+}
+
+body {
+  background-color: #000000;
+  color: #f9fafb;
+}
+
+.card h2, .card h3 {
+  font-size: 25px !important;
+  font-weight: 700 !important;
+}

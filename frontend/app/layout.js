@@ -1,4 +1,7 @@
 import "./globals.css";
+import { Inter } from "next/font/google";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata = {
   title: "Budgeting App",
@@ -8,7 +11,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="bg-gray-100 min-h-screen text-gray-800 antialiased">
+      <body className={`${inter.variable} min-h-screen antialiased`}>
         {children}
       </body>
     </html>

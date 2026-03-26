@@ -12,3 +12,6 @@ Thumbs.db
 
 primarypersona.txt
 backend/counterfactual/generate_synthetic_data.py
+
+# History store
+History store/
