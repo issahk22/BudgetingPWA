@@ -600,7 +600,7 @@ export default function Dashboard() {
                 className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent">
                 <option value="">Select shift type</option>
                 {shiftTypes.map((t) => (
-                  <option key={t} value={t}>{t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+                  <option key={t.id} value={t.type_name}>{t.type_name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
                 ))}
               </select>
             </label>

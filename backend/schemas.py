@@ -191,6 +191,8 @@ class JobResponse(BaseModel):
 
 
 
+
+
 ##-----Shift Schemas-----##
 
 class ShiftCreate(BaseModel):
@@ -218,4 +220,15 @@ class ShiftResponse(BaseModel):
         from_attributes = True
 
 
+
+##-----Shift Type Schemas-----##
+
+class ShiftTypeCreate(BaseModel):
+    type_name: str
+
+class ShiftTypeResponse(BaseModel):
+    id: str
+    type_name: str
+    class Config:
+        from_attributes = True
 

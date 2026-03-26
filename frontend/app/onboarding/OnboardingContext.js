@@ -18,6 +18,7 @@ export function OnboardingProvider({ children }) {
     fixedCosts: [],
     envelopes: [],
     jobs: [],
+    shiftTypes: ["regular", "overtime", "night"],
   });
 
 

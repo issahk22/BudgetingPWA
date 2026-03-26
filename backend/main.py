@@ -12,7 +12,7 @@ from envelope_router import router as envelope_router
 
 from database import Base, engine, get_db
 from history_database import Base as HistoryBase, engine as history_engine
-from models import User, Account, FixedCost, Envelope, Transaction, Goal, Transfer, MonthOpenSnapshot, Job, Shift
+from models import User, Account, FixedCost, Envelope, Transaction, Goal, Transfer, MonthOpenSnapshot, Job, ShiftType, Shift
 from month_close import gather_live_data, calculate_summaries, write_to_history, reset_live_db
 from history_database import SessionLocal as HistorySession
 from schemas import (UserCreate, UserResponse,
@@ -24,6 +24,7 @@ from schemas import (UserCreate, UserResponse,
     TransferCreate, TransferResponse,
     MonthOpenSnapshotCreate, MonthOpenSnapshotResponse,
     JobCreate, JobUpdate, JobResponse,
+    ShiftTypeCreate, ShiftTypeResponse,
     ShiftCreate, ShiftUpdate, ShiftResponse,
 )
 
@@ -536,10 +537,31 @@ def create_shift(shift: ShiftCreate, db: Session = Depends(get_db)):
     return new_shift
 
 
-@app.get("/shift-types")
+##-----Shift Type CRUD-----##
+
+@app.post("/shift-types", response_model=ShiftTypeResponse)
+def create_shift_type(shift_type: ShiftTypeCreate, db: Session = Depends(get_db)):
+    existing = db.query(ShiftType).filter(ShiftType.type_name == shift_type.type_name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Shift type already exists")
+    new_type = ShiftType(type_name=shift_type.type_name)
+    db.add(new_type)
+    db.commit()
+    db.refresh(new_type)
+    return new_type
+
+@app.get("/shift-types", response_model=list[ShiftTypeResponse])
 def get_shift_types(db: Session = Depends(get_db)):
-    rows = db.query(Shift.shift_type).distinct().all()
-    return sorted([r[0] for r in rows])
+    return db.query(ShiftType).all()
+
+@app.delete("/shift-types/{shift_type_id}")
+def delete_shift_type(shift_type_id: str, db: Session = Depends(get_db)):
+    shift_type = db.query(ShiftType).filter(ShiftType.id == shift_type_id).first()
+    if not shift_type:
+        raise HTTPException(status_code=404, detail="Shift type not found")
+    db.delete(shift_type)
+    db.commit()
+    return {"detail": "Shift type deleted"}
 
 
 @app.get("/shifts", response_model=list[ShiftResponse])

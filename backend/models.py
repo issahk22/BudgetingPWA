@@ -88,6 +88,13 @@ class Job(Base):
 
 
 
+class ShiftType(Base):
+    __tablename__ = "shift_types"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    type_name = Column(String, nullable=False, unique=True)
+
+
 class Shift(Base):
     __tablename__ = "shifts"
 

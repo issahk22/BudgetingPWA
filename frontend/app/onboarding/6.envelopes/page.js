@@ -114,6 +114,15 @@ export default function Envelopes() {
         });
       }
 
+      // shift types
+      for (const type of data.shiftTypes) {
+        await fetch(`${API}/shift-types`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type_name: type }),
+        });
+      }
+
       router.push("/dashboard");
 
     } catch (err) {
