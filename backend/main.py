@@ -235,6 +235,10 @@ def delete_envelope(envelope_id: str, db: Session = Depends(get_db)):
     if not envelope:
         raise HTTPException(status_code=404, detail="Envelope not found")
 
+    has_transactions = db.query(Transaction).filter(Transaction.envelope_id == envelope_id).first()
+    if has_transactions:
+        raise HTTPException(status_code=400, detail="Cannot delete envelope with transactions")
+
     db.delete(envelope)
     db.commit()
 

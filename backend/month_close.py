@@ -103,7 +103,8 @@ def calculate_summaries(data: dict, month: int, year: int, net_income: float) ->
         shift_summaries.append({
             "job_id":           s.job_id,
             "hourly_base_rate": float(job.base_hourly_rate) if job else 0.0,
-            "date":             s.date,
+            #convert string date to Python date object needed by SQLAlchemy 
+            "date":             date.fromisoformat(s.date) if isinstance(s.date, str) else s.date,
             "hours_worked":     float(s.hours_worked),
             "shift_type":       s.shift_type,
             "rate_multiplier":  float(s.rate_multiplier),

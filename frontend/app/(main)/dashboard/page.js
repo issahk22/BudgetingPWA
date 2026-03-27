@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Card from "../../components/Card";
+import TransactionForm from "./components/TransactionForm";
+import TransferForm from "./components/TransferForm";
+import ShiftForm from "./components/ShiftForm";
+import EndMonthModal from "./components/EndMonthModal";
+import AllocationsModal from "./components/AllocationsModal";
+import EnvelopeCard from "./components/EnvelopeCard";
+import AccountsSummary from "./components/AccountsSummary";
+import MonthlyCosts from "./components/MonthlyCosts";
+import ShiftsCard from "./components/ShiftsCard";
 
 const API = "http://localhost:8000";
 
@@ -43,8 +51,19 @@ export default function Dashboard() {
   //post month close allocations modal: envelope amounts, ML recommendations, and loading state
   const [showAllocations, setShowAllocations] = useState(false);
   const [allocations, setAllocations] = useState({});
+  const [savingsInputs, setSavingsInputs] = useState({});
   const [recommendations, setRecommendations] = useState(null);
   const [savingAllocations, setSavingAllocations] = useState(false);
+
+  const [goals, setGoals] = useState([]);
+
+  //envelope crud: add, edit, delete
+  const [showAddEnvelope, setShowAddEnvelope] = useState(false);
+  const [newEnvName, setNewEnvName] = useState("");
+  const [newEnvAmount, setNewEnvAmount] = useState("");
+  const [editingEnvelope, setEditingEnvelope] = useState(null);
+  const [editEnvName, setEditEnvName] = useState("");
+  const [editEnvAmount, setEditEnvAmount] = useState("");
 
   // tracks which month the dashboard is currently viewing (defaults to current month)
   const [viewDate, setViewDate] = useState(() => {
@@ -58,7 +77,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [accountsRes, envelopesRes, fixedCostsRes, transfersRes, jobsRes, shiftsRes, shiftTypesRes] = await Promise.all([
+        const [accountsRes, envelopesRes, fixedCostsRes, transfersRes, jobsRes, shiftsRes, shiftTypesRes, goalsRes] = await Promise.all([
           fetch(`${API}/accounts`),
           fetch(`${API}/envelopes`),
           fetch(`${API}/fixed-costs`),
@@ -66,6 +85,7 @@ export default function Dashboard() {
           fetch(`${API}/jobs`),
           fetch(`${API}/shifts`),
           fetch(`${API}/shift-types`),
+          fetch(`${API}/goals`),
         ]);
 
         const accountsData = await accountsRes.json();
@@ -75,6 +95,7 @@ export default function Dashboard() {
         const jobsData = await jobsRes.json();
         const shiftsData = await shiftsRes.json();
         const shiftTypesData = await shiftTypesRes.json();
+        const goalsData = await goalsRes.json();
 
         setAccounts(accountsData);
         setEnvelopes(envelopesData);
@@ -83,6 +104,7 @@ export default function Dashboard() {
         setJobs(jobsData);
         setShifts(shiftsData);
         setShiftTypes(shiftTypesData);
+        setGoals(goalsData);
 
         if (envelopesData.length > 0) {
           const txResults = await Promise.all(
@@ -371,7 +393,7 @@ export default function Dashboard() {
       setShowEndMonth(false);
       setNetIncome("");
 
-      //refresh envelopes and accounts after reset 
+      //refresh envelopes and accounts after reset
       const [envsRes, accsRes] = await Promise.all([
         fetch(`${API}/envelopes`),
         fetch(`${API}/accounts`),
@@ -386,7 +408,12 @@ export default function Dashboard() {
       freshEnvelopes.forEach((env) => { allocs[env.id] = parseFloat(env.allocated_amount).toFixed(2); });
       setAllocations(allocs);
 
-      //attempt ML recommendations 
+      //initialise savings inputs for pot accounts (empty = £0, user decides fresh each month)
+      const savingsInit = {};
+      freshAccounts.filter((a) => a.account_type === "pot").forEach((pot) => { savingsInit[pot.id] = ""; });
+      setSavingsInputs(savingsInit);
+
+      //attempt ML recommendations
       const fixedTotal = fixedCosts.reduce((sum, c) => sum + parseFloat(c.amount), 0);
       try {
         const recRes = await fetch(`${API}/envelopes/recommendations`, {
@@ -415,11 +442,13 @@ export default function Dashboard() {
 
 
   //saves each envelope's new allocated amount for the new month, blank fields save as 0
+  //also transfers savings to pot accounts and updates goal progress
   async function handleSaveAllocations(e) {
     e.preventDefault();
     setSavingAllocations(true);
 
     try {
+      //update envelope allocations
       await Promise.all(
         envelopes.map((env) =>
           fetch(`${API}/envelopes/${env.id}`, {
@@ -430,12 +459,103 @@ export default function Dashboard() {
         )
       );
 
+      //transfer savings to pot accounts
+      const primaryAccount = accounts.find((a) => a.include_in_budget);
+      let totalSaved = 0;
+
+      if (primaryAccount) {
+        const savingsTransfers = Object.entries(savingsInputs)
+          .filter(([, val]) => parseFloat(val) > 0)
+          .map(([potId, val]) => {
+            const amount = parseFloat(val);
+            totalSaved += amount;
+            return fetch(`${API}/transfers`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                from_account_id: primaryAccount.id,
+                to_account_id: potId,
+                amount,
+                description: "Monthly savings allocation",
+              }),
+            });
+          });
+
+        if (savingsTransfers.length > 0) {
+          await Promise.all(savingsTransfers);
+        }
+      }
+
+      //update goal progress if any savings were allocated
+      if (totalSaved > 0 && goals.length > 0) {
+        const goal = goals[0];
+        const newSavings = (parseFloat(goal.current_savings) || 0) + totalSaved;
+        await fetch(`${API}/goals/${goal.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ current_savings: newSavings }),
+        });
+      }
+
       setShowAllocations(false);
       window.location.reload();
     } catch (err) {
       console.error("Failed to save allocations:", err);
     } finally {
       setSavingAllocations(false);
+    }
+  }
+
+
+  //adds a new envelope
+  async function handleAddEnvelope(e) {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API}/envelopes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ envelope_name: newEnvName, allocated_amount: parseFloat(newEnvAmount) }),
+      });
+      const created = await res.json();
+      setEnvelopes((prev) => [...prev, created]);
+      setTransactions((prev) => ({ ...prev, [created.id]: [] }));
+      setNewEnvName("");
+      setNewEnvAmount("");
+      setShowAddEnvelope(false);
+    } catch (err) {
+      console.error("Failed to add envelope:", err);
+    }
+  }
+
+  //updates an existing envelope's name and/or allocated amount
+  async function handleEditEnvelope(envId) {
+    try {
+      const res = await fetch(`${API}/envelopes/${envId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ envelope_name: editEnvName, allocated_amount: parseFloat(editEnvAmount) }),
+      });
+      const updated = await res.json();
+      setEnvelopes((prev) => prev.map((env) => env.id === envId ? updated : env));
+      setEditingEnvelope(null);
+    } catch (err) {
+      console.error("Failed to update envelope:", err);
+    }
+  }
+
+  //deletes an envelope (only if it has no transactions)
+  async function handleDeleteEnvelope(envId) {
+    try {
+      const res = await fetch(`${API}/envelopes/${envId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        console.error("Delete failed:", err.detail);
+        return;
+      }
+      setEnvelopes((prev) => prev.filter((env) => env.id !== envId));
+      setTransactions((prev) => { const next = { ...prev }; delete next[envId]; return next; });
+    } catch (err) {
+      console.error("Failed to delete envelope:", err);
     }
   }
 
@@ -449,280 +569,62 @@ export default function Dashboard() {
 
         {/* Add Transaction Form */}
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50" onClick={() => setShowForm(false)}>
-          <form className="bg-card border border-border rounded-xl p-5 w-full max-w-md flex flex-col gap-3" onClick={(e) => e.stopPropagation()} onSubmit={handleAddTransaction}>
-            <h3 className="text-text mb-1">New Transaction</h3>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Envelope
-              <select required value={form.envelope_id} onChange={(e) => setForm({ ...form, envelope_id: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-                <option value="">Select envelope</option>
-                {envelopes.map((env) => (
-                  <option key={env.id} value={env.id}>{env.envelope_name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Account
-              <select required value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-                <option value="">Select account</option>
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.id}>
-                    {acc.account_name} ({acc.account_type}) — £{parseFloat(acc.balance).toFixed(2)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Amount
-              <input type="number" required min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Date
-              <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Description (optional)
-              <input type="text" maxLength={80} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-            </label>
-
-            <button type="submit" disabled={submitting}
-              className="w-full px-4 py-2 rounded-lg bg-accent text-gray-900 font-medium text-sm hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              {submitting ? "Saving..." : "Save Transaction"}
-            </button>
-          </form>
-          </div>
+          <TransactionForm
+            form={form} setForm={setForm}
+            envelopes={envelopes} accounts={accounts}
+            submitting={submitting}
+            onSubmit={handleAddTransaction}
+            onClose={() => setShowForm(false)}
+          />
         )}
 
 
         {/* Transfer Form */}
         {showTransferForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50" onClick={() => setShowTransferForm(false)}>
-          <form className="bg-card border border-border rounded-xl p-5 w-full max-w-md flex flex-col gap-3" onClick={(e) => e.stopPropagation()} onSubmit={handleTransfer}>
-            <h3 className="text-text mb-1">Transfer Between Accounts</h3>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              From
-              <select required value={transferForm.from_account_id} onChange={(e) => setTransferForm({ ...transferForm, from_account_id: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-                <option value="">Select account</option>
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.id}>
-                    {acc.account_name} ({acc.account_type}) — £{parseFloat(acc.balance).toFixed(2)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              To
-              <select required value={transferForm.to_account_id} onChange={(e) => setTransferForm({ ...transferForm, to_account_id: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-                <option value="">Select account</option>
-                {accounts
-                  .filter((acc) => acc.id !== transferForm.from_account_id)
-                  .map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.account_name} ({acc.account_type}) — £{parseFloat(acc.balance).toFixed(2)}
-                    </option>
-                  ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Amount
-              <input type="number" required min="0.01" step="0.01" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Date
-              <input type="date" value={transferForm.date} onChange={(e) => setTransferForm({ ...transferForm, date: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Description (optional)
-              <input type="text" maxLength={80} value={transferForm.description} onChange={(e) => setTransferForm({ ...transferForm, description: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-            </label>
-
-            <button type="submit" disabled={transferring}
-              className="w-full px-4 py-2 rounded-lg bg-accent text-gray-900 font-medium text-sm hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              {transferring ? "Transferring..." : "Confirm Transfer"}
-            </button>
-          </form>
-          </div>
+          <TransferForm
+            transferForm={transferForm} setTransferForm={setTransferForm}
+            accounts={accounts} transferring={transferring}
+            onSubmit={handleTransfer}
+            onClose={() => setShowTransferForm(false)}
+          />
         )}
 
 
         {/* Add Shift  */}
         {showShiftForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50" onClick={() => setShowShiftForm(false)}>
-          <form className="bg-card border border-border rounded-xl p-5 w-full max-w-md flex flex-col gap-3" onClick={(e) => e.stopPropagation()} onSubmit={handleLogShift}>
-            <h3 className="text-text mb-1">Log Shift</h3>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Job
-              <select required value={shiftForm.job_id} onChange={(e) => setShiftForm({ ...shiftForm, job_id: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-                <option value="">Select job</option>
-                {jobs.map((job) => (
-                  <option key={job.job_id} value={job.job_id}>{job.job_name} — £{parseFloat(job.base_hourly_rate).toFixed(2)}/hr</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Date
-              <input type="date" required value={shiftForm.date} onChange={(e) => setShiftForm({ ...shiftForm, date: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Hours Worked
-              <input type="number" required min="0.5" step="0.5" value={shiftForm.hours_worked} onChange={(e) => setShiftForm({ ...shiftForm, hours_worked: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Shift Type
-              <select required value={shiftForm.shift_type} onChange={(e) => setShiftForm({ ...shiftForm, shift_type: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-                <option value="">Select shift type</option>
-                {shiftTypes.map((t) => (
-                  <option key={t.id} value={t.type_name}>{t.type_name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Rate Multiplier (optional)
-              <input type="number" min="1" step="0.05" placeholder="e.g. 1.5" value={shiftForm.rate_multiplier} onChange={(e) => setShiftForm({ ...shiftForm, rate_multiplier: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-            </label>
-
-            <button type="submit" disabled={submittingShift}
-              className="w-full px-4 py-2 rounded-lg bg-accent text-gray-900 font-medium text-sm hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              {submittingShift ? "Saving..." : "Log Shift"}
-            </button>
-          </form>
-          </div>
+          <ShiftForm
+            shiftForm={shiftForm} setShiftForm={setShiftForm}
+            jobs={jobs} shiftTypes={shiftTypes}
+            submittingShift={submittingShift}
+            onSubmit={handleLogShift}
+            onClose={() => setShowShiftForm(false)}
+          />
         )}
 
 
         {/* End Month */}
         {showEndMonth && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50" onClick={() => setShowEndMonth(false)}>
-          <form className="bg-card border border-border rounded-xl p-5 w-full max-w-md flex flex-col gap-3" onClick={(e) => e.stopPropagation()} onSubmit={handleEndMonth}>
-            <h3 className="text-text mb-1">End Month</h3>
-            <p className="text-sm text-muted">This will close the current month and archive all data to history.</p>
-
-            <label className="flex flex-col gap-1 text-sm text-muted">
-              Net Income (for next month)
-              <input type="number" required min="0" step="0.01" value={netIncome} onChange={(e) => setNetIncome(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-            </label>
-
-            <button type="submit" disabled={closingMonth}
-              className="w-full px-4 py-2 rounded-lg bg-red-600 text-white font-medium text-sm hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              {closingMonth ? "Closing..." : "Confirm End Month"}
-            </button>
-          </form>
-          </div>
+          <EndMonthModal
+            netIncome={netIncome} setNetIncome={setNetIncome}
+            closingMonth={closingMonth}
+            onSubmit={handleEndMonth}
+            onClose={() => setShowEndMonth(false)}
+          />
         )}
 
 
 
         {/* Envelope allocations post end month */}
-        {showAllocations && (() => {
-          const primaryAccount = accounts.find((a) => a.include_in_budget);
-          const accountBalance = primaryAccount ? parseFloat(primaryAccount.balance) : 0;
-          const fixedTotal = fixedCosts.reduce((sum, c) => sum + parseFloat(c.amount), 0);
-          const availableBudget = accountBalance - fixedTotal;
-          const allocatedSum = Object.values(allocations).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
-          const remaining = availableBudget - allocatedSum;
-          const isNegativeAvailable = availableBudget < 0;
-
-          return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50" onClick={() => setShowAllocations(false)}>
-            <form className="bg-card border border-border rounded-xl p-5 w-full max-w-lg flex flex-col gap-3 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} onSubmit={handleSaveAllocations}>
-              <h3 className="text-text mb-1">Envelope Allocations</h3>
-
-              {/* Budget summary */}
-              <div className="bg-gray-800 rounded-lg px-4 py-3 flex flex-col gap-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted">Account balance</span>
-                  <span className="text-text">£{accountBalance.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted">Fixed costs</span>
-                  <span className="text-negative">-£{fixedTotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between border-t border-gray-700 pt-1 mt-1 font-medium">
-                  <span className="text-muted">Available to budget</span>
-                  <span className={isNegativeAvailable ? "text-negative" : "text-text"}>£{availableBudget.toFixed(2)}</span>
-                </div>
-                {!isNegativeAvailable && (
-                  <div className="flex justify-between">
-                    <span className="text-muted">Remaining unallocated</span>
-                    <span className={remaining < 0 ? "text-negative" : "text-accent"}>£{remaining.toFixed(2)}</span>
-                  </div>
-                )}
-              </div>
-
-              {isNegativeAvailable ? (
-                <p className="text-sm text-negative">Your fixed costs exceed your account balance. Resolve this before setting allocations.</p>
-              ) : (
-                <>
-                  <div className="flex text-xs text-muted font-medium border-b border-gray-700 pb-1 mb-1">
-                    <span className="flex-1">Envelope</span>
-                    <span className="w-28 text-right">Amount (£)</span>
-                    {recommendations && <span className="w-32 text-right text-accent">Recommended (£)</span>}
-                  </div>
-
-                  {envelopes.map((env) => (
-                    <div key={env.id} className="flex items-center gap-2">
-                      <span className="flex-1 text-sm text-text">{env.envelope_name}</span>
-                      <input
-                        type="number" min="0" step="0.01"
-                        value={allocations[env.id] ?? ""}
-                        onChange={(e) => setAllocations((prev) => ({ ...prev, [env.id]: e.target.value }))}
-                        className="w-28 px-3 py-1.5 bg-gray-700 border border-border rounded-lg text-text text-sm text-right focus:outline-none focus:ring-2 focus:ring-accent"
-                      />
-                      {recommendations && (
-                        <span className="w-32 text-right text-sm text-accent">
-                          {recommendations[env.envelope_name] !== undefined
-                            ? `£${recommendations[env.envelope_name].toFixed(2)}`
-                            : "—"}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-
-                  {recommendations && (
-                    <p className="text-xs text-muted">Recommendations based on your spending history.</p>
-                  )}
-
-                  <button type="submit" disabled={savingAllocations}
-                    className="w-full px-4 py-2 rounded-lg bg-accent text-white font-medium text-sm hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2">
-                    {savingAllocations ? "Saving..." : "Save Allocations"}
-                  </button>
-                </>
-              )}
-            </form>
-            </div>
-          );
-        })()}
+        {showAllocations && (
+          <AllocationsModal
+            accounts={accounts} envelopes={envelopes} fixedCosts={fixedCosts}
+            allocations={allocations} setAllocations={setAllocations}
+            savingsInputs={savingsInputs} setSavingsInputs={setSavingsInputs}
+            recommendations={recommendations}
+            savingAllocations={savingAllocations}
+            onSubmit={handleSaveAllocations}
+          />
+        )}
 
 
 
@@ -796,61 +698,77 @@ export default function Dashboard() {
           <div>
 
             {/* Envelope Cards Grid */}
-            <h2 className="text-[28px] font-bold text-text font-[var(--font-inter)] mb-2">Envelopes</h2>
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-[28px] font-bold text-text font-[var(--font-inter)]">Envelopes</h2>
+              <button
+                onClick={() => setShowAddEnvelope((v) => !v)}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent-hover transition-colors"
+              >
+                + Add Envelope
+              </button>
+            </div>
+
+            {/* Amount left to budget */}
+            {(() => {
+              const primaryAcc = accounts.find((a) => a.include_in_budget);
+              const accBal = primaryAcc ? parseFloat(primaryAcc.balance) : 0;
+              const fixedTotal = fixedCosts.reduce((sum, c) => sum + parseFloat(c.amount), 0);
+              const totalAllocated = envelopes.reduce((sum, e) => sum + parseFloat(e.allocated_amount), 0);
+              const leftToBudget = accBal - fixedTotal - totalAllocated;
+              return (
+                <div className="bg-gray-800 rounded-lg px-4 py-2 mb-4 flex justify-between items-center text-sm">
+                  <span className="text-muted">Amount left to budget</span>
+                  <span className={leftToBudget < 0 ? "text-negative font-medium" : "text-accent font-medium"}>
+                    £{leftToBudget.toFixed(2)}
+                  </span>
+                </div>
+              );
+            })()}
+
             <div className="h-[1.5px] w-full bg-[#262626] mb-4"></div>
+
+            {/* Add envelope form */}
+            {showAddEnvelope && (
+              <form onSubmit={handleAddEnvelope} className="bg-gray-800 border border-border rounded-lg p-4 mb-4 flex items-end gap-3">
+                <div className="flex-1">
+                  <label className="text-xs text-muted mb-1 block">Name</label>
+                  <input
+                    type="text" required value={newEnvName} onChange={(e) => setNewEnvName(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                </div>
+                <div className="w-32">
+                  <label className="text-xs text-muted mb-1 block">Amount (£)</label>
+                  <input
+                    type="number" min="0" step="0.01" required value={newEnvAmount} onChange={(e) => setNewEnvAmount(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-gray-700 border border-border rounded-lg text-text text-sm text-right focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                </div>
+                <button type="submit" className="px-4 py-1.5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent-hover transition-colors">Save</button>
+                <button type="button" onClick={() => { setShowAddEnvelope(false); setNewEnvName(""); setNewEnvAmount(""); }} className="px-4 py-1.5 rounded-lg text-sm font-medium border border-border text-muted hover:text-text transition-colors">Cancel</button>
+              </form>
+            )}
+
             {envelopes.length === 0 ? (
               <p className="text-sm text-muted mb-6">No envelopes found.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {envelopes.map((env) => {
-                  const isOpen = openEnvelopes.has(env.id);
-                  const envTxs = transactions[env.id] || [];
-                  const balance = parseFloat(env.balance);
-                  const allocated = parseFloat(env.allocated_amount);
-                  const pct = allocated > 0 ? Math.max(0, Math.min(100, (balance / allocated) * 100)) : 0;
-
-                  return (
-                    <Card key={env.id} className="p-4 self-start">
-                      <div
-                        className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => toggleEnvelopeLog(env.id)}
-                      >
-                        <span className="text-[25px] font-bold text-text">{env.envelope_name}</span>
-                        <span className="text-xs text-muted">{isOpen ? "▲" : "▼"}</span>
-                      </div>
-
-                      <p className="text-[36px] font-bold text-white mt-1 font-[var(--font-inter)]">
-                        £{balance.toFixed(2)} <span className="text-sm font-normal text-muted">/ £{allocated.toFixed(2)}</span>
-                      </p>
-
-                      {/* Progress bar */}
-                      <div className="w-full h-1.5 bg-gray-700 rounded-full mt-2">
-                        <div
-                          className={`h-1.5 rounded-full ${pct > 20 ? "bg-accent" : "bg-negative"}`}
-                          style={{ width: `${pct}%` }}
-                        ></div>
-                      </div>
-
-                      {isOpen && (
-                        <div className="mt-3 pt-3 border-t border-gray-700">
-                          {envTxs.length === 0 ? <p className="text-xs text-muted">No transactions yet.</p> : (
-                            <ul>
-                              {envTxs.map((tx) => (
-                                <li key={tx.id} className="py-1">
-                                  <div className="flex justify-between items-center text-xs">
-                                    <span className="text-muted">{tx.description || "—"}</span>
-                                    <span className="text-negative">-£{parseFloat(tx.amount).toFixed(2)}</span>
-                                  </div>
-                                  {tx.date && <p className="text-xs text-muted">{tx.date}</p>}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      )}
-                    </Card>
-                  );
-                })}
+                {envelopes.map((env) => (
+                  <EnvelopeCard
+                    key={env.id}
+                    env={env}
+                    isOpen={openEnvelopes.has(env.id)}
+                    envTxs={transactions[env.id] || []}
+                    editingEnvelope={editingEnvelope}
+                    editEnvName={editEnvName} setEditEnvName={setEditEnvName}
+                    editEnvAmount={editEnvAmount} setEditEnvAmount={setEditEnvAmount}
+                    onToggle={() => toggleEnvelopeLog(env.id)}
+                    onStartEdit={() => { setEditingEnvelope(env.id); setEditEnvName(env.envelope_name); setEditEnvAmount(parseFloat(env.allocated_amount).toFixed(2)); }}
+                    onSaveEdit={handleEditEnvelope}
+                    onCancelEdit={() => setEditingEnvelope(null)}
+                    onDelete={handleDeleteEnvelope}
+                  />
+                ))}
               </div>
             )}
 
@@ -860,115 +778,26 @@ export default function Dashboard() {
           <div className="flex flex-col gap-4">
 
             {/* Accounts Summary */}
-            <Card className="w-full">
-              <h2 className="text-text mb-1">Accounts</h2>
-              <p className="text-2xl font-bold text-white mb-3">£{totalBalance.toFixed(2)}</p>
-
-              {accounts.length === 0 ? <p className="text-sm text-muted">No accounts found.</p> : (
-                <ul className="space-y-0">
-                  {[...accounts].sort((a, b) => (b.include_in_budget ? 1 : 0) - (a.include_in_budget ? 1 : 0)).map((acc) => {
-                    const isOpen = openAccountLogs.has(acc.id);
-                    const accTransfers = getAccountTransfers(acc.id);
-                    return (
-                      <li key={acc.id}>
-                        <div
-                          className="flex justify-between items-center py-2 border-b border-gray-700 cursor-pointer hover:bg-gray-700/30 transition-colors"
-                          onClick={() => toggleAccountLog(acc.id)}
-                        >
-                          <span className="text-sm text-text">
-                            {acc.account_name} <span className="text-xs text-muted">({acc.account_type})</span>
-                          </span>
-                          <span className="text-sm text-text font-medium">
-                            £{parseFloat(acc.balance).toFixed(2)} <span className="text-xs text-muted">{isOpen ? "▲" : "▼"}</span>
-                          </span>
-                        </div>
-
-                        {isOpen && (
-                          <div className="pl-3 mt-2 mb-2 border-l-2 border-border">
-                            <p className="text-xs text-muted mb-1">Transfer Log</p>
-                            {accTransfers.length === 0 ? <p className="text-xs text-muted">No transfers yet.</p> : (
-                              <ul>
-                                {accTransfers.map((t) => {
-                                  const isOutgoing = t.from_account_id === acc.id;
-                                  return (
-                                    <li key={t.id} className="py-1">
-                                      <div className="flex justify-between items-center text-xs">
-                                        <span className="text-muted">
-                                          {isOutgoing ? `→ ${getAccountName(t.to_account_id)}` : `← ${getAccountName(t.from_account_id)}`}
-                                          {t.description ? ` · ${t.description}` : ""}
-                                        </span>
-                                        <span className={isOutgoing ? "text-negative" : "text-positive"}>
-                                          {isOutgoing ? "-" : "+"}£{parseFloat(t.amount).toFixed(2)}
-                                        </span>
-                                      </div>
-                                      {t.date && <p className="text-xs text-muted">{t.date}</p>}
-                                    </li>
-                                  );
-                                })}
-                              </ul>
-                            )}
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </Card>
+            <AccountsSummary
+              accounts={accounts}
+              totalBalance={totalBalance}
+              openAccountLogs={openAccountLogs}
+              onToggle={toggleAccountLog}
+              getAccountTransfers={getAccountTransfers}
+              getAccountName={getAccountName}
+            />
 
             {/* Monthly Costs + Shifts */}
             <div className="grid grid-cols-2 gap-4">
 
-              {/* Monthly Costs */}
-              <Card>
-                <h2 className="text-text mb-3">Monthly Costs</h2>
+              <MonthlyCosts fixedCosts={fixedCosts} onPaidToggle={handlePaidToggle} />
 
-                {fixedCosts.length === 0 ? <p className="text-sm text-muted">No fixed costs found.</p> : (
-                  <ul>
-                    {fixedCosts.map((cost) => (
-                      <li key={cost.id} className="flex justify-between items-center py-2 border-b border-gray-700 last:border-0">
-                        <span className="text-sm text-text">{cost.cost_name}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm text-text font-medium">£{parseFloat(cost.amount).toFixed(2)}</span>
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={cost.paid}
-                              onChange={() => handlePaidToggle(cost)}
-                              className="w-4 h-4 rounded accent-accent"
-                            />
-                            <span className={`text-xs ${cost.paid ? "text-positive" : "text-muted"}`}>
-                              {cost.paid ? "Paid" : "Unpaid"}
-                            </span>
-                          </label>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
-
-              {/* Shifts */}
-              <Card>
-                <h2 className="text-text mb-1">Shifts</h2>
-                <p className="text-lg font-bold text-accent mb-3">£{totalMonthlyPay.toFixed(2)} <span className="text-xs text-muted font-normal">this month</span></p>
-
-                {shifts.length === 0 ? <p className="text-sm text-muted">No shifts logged yet.</p> : (
-                  <ul>
-                    {shifts.map((shift) => (
-                      <li key={shift.shift_id} className="py-2 border-b border-gray-700 last:border-0">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-text">
-                            {getJobName(shift.job_id)} <span className="text-xs text-muted">· {formatShiftType(shift.shift_type)}</span>
-                          </span>
-                          <span className="text-text font-medium">£{parseFloat(shift.total_pay).toFixed(2)}</span>
-                        </div>
-                        <p className="text-xs text-muted mt-0.5">{shift.date} · {shift.hours_worked}hrs · x{shift.rate_multiplier}</p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
+              <ShiftsCard
+                shifts={shifts}
+                totalMonthlyPay={totalMonthlyPay}
+                getJobName={getJobName}
+                formatShiftType={formatShiftType}
+              />
 
             </div>
 
