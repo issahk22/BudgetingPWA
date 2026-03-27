@@ -7,6 +7,7 @@ import ShiftForm from "./components/ShiftForm";
 import EndMonthModal from "./components/EndMonthModal";
 import AllocationsModal from "./components/AllocationsModal";
 import EnvelopeCard from "./components/EnvelopeCard";
+import AddEnvelopeModal from "./components/AddEnvelopeModal";
 import AccountsSummary from "./components/AccountsSummary";
 import MonthlyCosts from "./components/MonthlyCosts";
 import ShiftsCard from "./components/ShiftsCard";
@@ -614,6 +615,17 @@ export default function Dashboard() {
 
 
 
+        {/* Add Envelope */}
+        {showAddEnvelope && (
+          <AddEnvelopeModal
+            newEnvName={newEnvName} setNewEnvName={setNewEnvName}
+            newEnvAmount={newEnvAmount} setNewEnvAmount={setNewEnvAmount}
+            onSubmit={handleAddEnvelope}
+            onClose={() => { setShowAddEnvelope(false); setNewEnvName(""); setNewEnvAmount(""); }}
+          />
+        )}
+
+
         {/* Envelope allocations post end month */}
         {showAllocations && (
           <AllocationsModal
@@ -726,28 +738,6 @@ export default function Dashboard() {
             })()}
 
             <div className="h-[1.5px] w-full bg-[#262626] mb-4"></div>
-
-            {/* Add envelope form */}
-            {showAddEnvelope && (
-              <form onSubmit={handleAddEnvelope} className="bg-gray-800 border border-border rounded-lg p-4 mb-4 flex items-end gap-3">
-                <div className="flex-1">
-                  <label className="text-xs text-muted mb-1 block">Name</label>
-                  <input
-                    type="text" required value={newEnvName} onChange={(e) => setNewEnvName(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                  />
-                </div>
-                <div className="w-32">
-                  <label className="text-xs text-muted mb-1 block">Amount (£)</label>
-                  <input
-                    type="number" min="0" step="0.01" required value={newEnvAmount} onChange={(e) => setNewEnvAmount(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-gray-700 border border-border rounded-lg text-text text-sm text-right focus:outline-none focus:ring-2 focus:ring-accent"
-                  />
-                </div>
-                <button type="submit" className="px-4 py-1.5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent-hover transition-colors">Save</button>
-                <button type="button" onClick={() => { setShowAddEnvelope(false); setNewEnvName(""); setNewEnvAmount(""); }} className="px-4 py-1.5 rounded-lg text-sm font-medium border border-border text-muted hover:text-text transition-colors">Cancel</button>
-              </form>
-            )}
 
             {envelopes.length === 0 ? (
               <p className="text-sm text-muted mb-6">No envelopes found.</p>
