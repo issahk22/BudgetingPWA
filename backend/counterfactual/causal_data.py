@@ -18,6 +18,12 @@ def get_monthly_panel():
     conn = sqlite3.connect(HISTORY_DB)
     cursor = conn.cursor()
 
+    # fresh install: history db may have no tables yet (no months closed)
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='shift_history'")
+    if not cursor.fetchone():
+        conn.close()
+        return [], []
+
     # find different shift types within the data
     cursor.execute("SELECT DISTINCT shift_type FROM shift_history ORDER BY shift_type")
     shift_types = sorted([row[0] for row in cursor.fetchall()])
@@ -99,12 +105,14 @@ def get_monthly_panel():
 
 
 MAX_SHIFT_TYPES = 5
+MINIMUM_MONTHS = 6
 
 
 def validate_data_sufficiency(panel, n_shift_types):
-    #checks enough history for OLS. Max 5 shift types. 
-    #need no. shift types+1 months. Min 3 months 
-   
+    #checks enough history for OLS. Max 5 shift types.
+    #flat floor of 6 months regardless of shift type count
+    #(6 also covers the OLS requirement of n_shift_types + 1 since max is 5)
+
     if n_shift_types > MAX_SHIFT_TYPES:
         return {
             "months_available": len(panel),
@@ -113,12 +121,11 @@ def validate_data_sufficiency(panel, n_shift_types):
             "error": f"Too many shift types ({n_shift_types}). Maximum allowed is {MAX_SHIFT_TYPES}.",
         }
 
-    minimum = max(3, n_shift_types + 1)
     n = len(panel)
 
     return {
-        
+
         "months_available": n,
-        "sufficient": n >= minimum,
-        "minimum_required": minimum,
+        "sufficient": n >= MINIMUM_MONTHS,
+        "minimum_required": MINIMUM_MONTHS,
     }

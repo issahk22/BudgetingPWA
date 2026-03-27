@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 import sqlite3, os
 from counterfactual import counterfactual_hindsight, counterfactual_forecasting
-from causal_data import get_monthly_panel
+from causal_data import get_monthly_panel, validate_data_sufficiency
 
 router = APIRouter(prefix="/counterfactual")
 
@@ -21,6 +21,20 @@ def get_shift_types():
     """Returns the list of shift types found in the user's history."""
     _, shift_types = get_monthly_panel()
     return shift_types
+
+
+@router.get("/sufficiency")
+def get_sufficiency():
+    """Returns whether there is enough history to run counterfactual models."""
+    panel, shift_types = get_monthly_panel()
+    check = validate_data_sufficiency(panel, len(shift_types))
+    return {
+        "months_available":  check["months_available"],
+        "minimum_required":  check["minimum_required"],
+        "sufficient":        check["sufficient"],
+        "n_shift_types":     len(shift_types),
+        "error":             check.get("error"),
+    }
 
 
 @router.get("/month-summary/{year}/{month}")

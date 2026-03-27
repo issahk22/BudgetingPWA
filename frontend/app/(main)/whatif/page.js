@@ -12,6 +12,9 @@ function formatType(type) {
 export default function WhatIf() {
   const [shiftTypes, setShiftTypes] = useState([]);
 
+  //minimum months of history required before the models can run
+  const [sufficiency, setSufficiency] = useState(null);
+
   // Hindsight
   const [hindsightForm, setHindsightForm] = useState({ month: "", year: "" });
   const [cfHours, setCfHours] = useState({});
@@ -26,7 +29,7 @@ export default function WhatIf() {
   const [forecastError, setForecastError] = useState(null);
   const [forecastLoading, setForecastLoading] = useState(false);
 
-  // fetch shift types on mount, initialise both hour dicts
+  // fetch shift types + sufficiency on mount, initialise both hour dicts
   useEffect(() => {
     fetch(`${API}/counterfactual/shift-types`)
       .then((r) => r.json())
@@ -38,6 +41,11 @@ export default function WhatIf() {
         setForecastHours({ ...initial });
       })
       .catch(() => {});
+
+    fetch(`${API}/counterfactual/sufficiency`)
+      .then((r) => r.json())
+      .then((data) => setSufficiency(data))
+      .catch(() => setSufficiency({ sufficient: false, error: "Failed to reach the backend." }));
   }, []);
 
   // fetch month summary when month + year filled (for hindsight)
@@ -106,6 +114,31 @@ export default function WhatIf() {
     } finally {
       setForecastLoading(false);
     }
+  }
+
+  // not enough months of history to run the models
+  if (sufficiency && !sufficiency.sufficient) {
+    const monthsShort = Math.max(0, (sufficiency.minimum_required || 0) - (sufficiency.months_available || 0));
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="card bg-[#323232] border border-border rounded-xl p-8 max-w-md w-full text-center">
+          <h2 className="text-xl font-bold text-text mb-4">Locked</h2>
+
+          {sufficiency.error ? (
+            <p className="text-muted text-sm">{sufficiency.error}</p>
+          ) : (
+            <>
+              <p className="text-muted text-sm mb-3">
+                The What If models need at least{" "}
+                <span className="text-text font-semibold">6 months</span> of closed history to run.
+              </p>
+              
+              
+            </>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
