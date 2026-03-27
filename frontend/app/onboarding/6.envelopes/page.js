@@ -57,20 +57,7 @@ export default function Envelopes() {
         body: JSON.stringify({ username: data.username }),
       });
 
-      //goals
-      if (data.goal) {
-        await fetch(`${API}/goals`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            target_amount: parseFloat(data.goal),
-            current_savings: data.currentSavings ? parseFloat(data.currentSavings) : null,
-            deadline: data.goalDeadline || null,
-          }),
-        });
-      }
-
-      // accounts
+      // accounts (pots can carry a savings goal via target_amount + deadline)
       for (const acc of data.accounts) {
         await fetch(`${API}/accounts`, {
           method: "POST",
@@ -80,6 +67,8 @@ export default function Envelopes() {
             balance: parseFloat(acc.balance) || 0,
             account_type: acc.type,
             include_in_budget: acc.include_in_budget,
+            target_amount: acc.target_amount ? parseFloat(acc.target_amount) : null,
+            deadline: acc.deadline || null,
           }),
         });
       }

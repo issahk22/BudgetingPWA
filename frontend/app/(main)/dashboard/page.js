@@ -10,6 +10,7 @@ import EnvelopeCard from "./components/EnvelopeCard";
 import AddEnvelopeModal from "./components/AddEnvelopeModal";
 import AccountsSummary from "./components/AccountsSummary";
 import MonthlyCosts from "./components/MonthlyCosts";
+import ManageCostsModal from "./components/ManageCostsModal";
 import ShiftsCard from "./components/ShiftsCard";
 
 const API = "http://localhost:8000";
@@ -56,7 +57,8 @@ export default function Dashboard() {
   const [recommendations, setRecommendations] = useState(null);
   const [savingAllocations, setSavingAllocations] = useState(false);
 
-  const [goals, setGoals] = useState([]);
+  //manage monthly costs modal visibility
+  const [showManageCosts, setShowManageCosts] = useState(false);
 
   //envelope crud: add, edit, delete
   const [showAddEnvelope, setShowAddEnvelope] = useState(false);
@@ -78,7 +80,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [accountsRes, envelopesRes, fixedCostsRes, transfersRes, jobsRes, shiftsRes, shiftTypesRes, goalsRes] = await Promise.all([
+        const [accountsRes, envelopesRes, fixedCostsRes, transfersRes, jobsRes, shiftsRes, shiftTypesRes] = await Promise.all([
           fetch(`${API}/accounts`),
           fetch(`${API}/envelopes`),
           fetch(`${API}/fixed-costs`),
@@ -86,7 +88,6 @@ export default function Dashboard() {
           fetch(`${API}/jobs`),
           fetch(`${API}/shifts`),
           fetch(`${API}/shift-types`),
-          fetch(`${API}/goals`),
         ]);
 
         const accountsData = await accountsRes.json();
@@ -96,7 +97,6 @@ export default function Dashboard() {
         const jobsData = await jobsRes.json();
         const shiftsData = await shiftsRes.json();
         const shiftTypesData = await shiftTypesRes.json();
-        const goalsData = await goalsRes.json();
 
         setAccounts(accountsData);
         setEnvelopes(envelopesData);
@@ -105,7 +105,6 @@ export default function Dashboard() {
         setJobs(jobsData);
         setShifts(shiftsData);
         setShiftTypes(shiftTypesData);
-        setGoals(goalsData);
 
         if (envelopesData.length > 0) {
           const txResults = await Promise.all(
@@ -192,6 +191,77 @@ export default function Dashboard() {
   }
 
 
+
+
+  async function handleAddCost(name, amount) {
+    try {
+      const res = await fetch(`${API}/fixed-costs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cost_name: name, amount, paid: false }),
+      });
+      const created = await res.json();
+      setFixedCosts((prev) => [...prev, created]);
+    } catch (err) {
+      console.error("Failed to add fixed cost:", err);
+    }
+  }
+
+  async function handleEditCost(cost, newName, newAmount) {
+    try {
+      const res = await fetch(`${API}/fixed-costs/${cost.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cost_name: newName, amount: newAmount }),
+      });
+      const updated = await res.json();
+      setFixedCosts((prev) => prev.map((c) => c.id === cost.id ? updated : c));
+
+      //if cost was  paid, adjust  bank account balance by the difference
+      if (cost.paid) {
+        const diff = parseFloat(cost.amount) - newAmount;
+        const bankAccount = accounts.find((a) => a.include_in_budget);
+        if (bankAccount && diff !== 0) {
+          const newBalance = parseFloat(bankAccount.balance) + diff;
+          await fetch(`${API}/accounts/${bankAccount.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ balance: newBalance }),
+          });
+          setAccounts((prev) =>
+            prev.map((acc) => acc.id === bankAccount.id ? { ...acc, balance: newBalance } : acc)
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Failed to update fixed cost:", err);
+    }
+  }
+
+  async function handleDeleteCost(cost) {
+    try {
+      await fetch(`${API}/fixed-costs/${cost.id}`, { method: "DELETE" });
+      setFixedCosts((prev) => prev.filter((c) => c.id !== cost.id));
+
+      //if cost was paid, restore  amount to the bank account
+      if (cost.paid) {
+        const bankAccount = accounts.find((a) => a.include_in_budget);
+        if (bankAccount) {
+          const newBalance = parseFloat(bankAccount.balance) + parseFloat(cost.amount);
+          await fetch(`${API}/accounts/${bankAccount.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ balance: newBalance }),
+          });
+          setAccounts((prev) =>
+            prev.map((acc) => acc.id === bankAccount.id ? { ...acc, balance: newBalance } : acc)
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Failed to delete fixed cost:", err);
+    }
+  }
 
 
   function toggleEnvelopeLog(envId) {
@@ -460,16 +530,14 @@ export default function Dashboard() {
         )
       );
 
-      //transfer savings to pot accounts
+      //transfer savings to pot accounts (pot balance is the savings progress)
       const primaryAccount = accounts.find((a) => a.include_in_budget);
-      let totalSaved = 0;
 
       if (primaryAccount) {
         const savingsTransfers = Object.entries(savingsInputs)
           .filter(([, val]) => parseFloat(val) > 0)
           .map(([potId, val]) => {
             const amount = parseFloat(val);
-            totalSaved += amount;
             return fetch(`${API}/transfers`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -485,17 +553,6 @@ export default function Dashboard() {
         if (savingsTransfers.length > 0) {
           await Promise.all(savingsTransfers);
         }
-      }
-
-      //update goal progress if any savings were allocated
-      if (totalSaved > 0 && goals.length > 0) {
-        const goal = goals[0];
-        const newSavings = (parseFloat(goal.current_savings) || 0) + totalSaved;
-        await fetch(`${API}/goals/${goal.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ current_savings: newSavings }),
-        });
       }
 
       setShowAllocations(false);
@@ -613,6 +670,18 @@ export default function Dashboard() {
           />
         )}
 
+
+
+        {/* Manage Monthly Costs */}
+        {showManageCosts && (
+          <ManageCostsModal
+            fixedCosts={fixedCosts}
+            onAdd={handleAddCost}
+            onEdit={handleEditCost}
+            onDelete={handleDeleteCost}
+            onClose={() => setShowManageCosts(false)}
+          />
+        )}
 
 
         {/* Add Envelope */}
@@ -780,7 +849,7 @@ export default function Dashboard() {
             {/* Monthly Costs + Shifts */}
             <div className="grid grid-cols-2 gap-4">
 
-              <MonthlyCosts fixedCosts={fixedCosts} onPaidToggle={handlePaidToggle} />
+              <MonthlyCosts fixedCosts={fixedCosts} onPaidToggle={handlePaidToggle} onManage={() => setShowManageCosts(true)} />
 
               <ShiftsCard
                 shifts={shifts}

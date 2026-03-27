@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from datetime import date
 from database import SessionLocal as LiveSession
 from history_database import SessionLocal as HistorySession
-from models import Account, FixedCost, Envelope, Goal, Shift, Job, MonthOpenSnapshot
+from models import Account, FixedCost, Envelope, Shift, Job, MonthOpenSnapshot
 from history_models import MonthSummary, EnvelopeHistory, ShiftHistory, FixedCostHistory, GoalHistory
 
 def get_live_db():
@@ -31,11 +31,16 @@ def gather_live_data(live_db: Session, month: int, year: int):
         Account.include_in_budget == True
     ).all()
 
+    #pots with a savings target act as the goals (1 pot = 1 goal)
+    pots = live_db.query(Account).filter(
+        Account.account_type == "pot",
+        Account.target_amount.isnot(None)
+    ).all()
+
     envelopes = live_db.query(Envelope).all()
     fixed_costs = live_db.query(FixedCost).all()
     shifts = live_db.query(Shift).all()
     jobs = live_db.query(Job).all()
-    goals = live_db.query(Goal).all()
     snapshot = live_db.query(MonthOpenSnapshot).filter(
         MonthOpenSnapshot.month == month,
         MonthOpenSnapshot.year == year
@@ -49,7 +54,7 @@ def gather_live_data(live_db: Session, month: int, year: int):
         "fixed_costs": fixed_costs,
         "shifts": shifts,
         "jobs": jobs,
-        "goals": goals,
+        "pots": pots,
         "snapshot": snapshot,
     }
 
@@ -62,7 +67,7 @@ def calculate_summaries(data: dict, month: int, year: int, net_income: float) ->
     envelopes     = data["envelopes"]
     shifts        = data["shifts"]
     jobs          = data["jobs"]
-    goals         = data["goals"]
+    pots          = data["pots"]
     snapshot      = data["snapshot"]
 
     job_map = {job.job_id: job for job in jobs}
@@ -122,21 +127,22 @@ def calculate_summaries(data: dict, month: int, year: int, net_income: float) ->
         })
 
 
+   
     goal_summaries = []
-    for goal in goals:
-        amount_at_month_end = float(goal.current_savings) if goal.current_savings else 0.0
-        target              = float(goal.target_amount)
+    for pot in pots:
+        amount_at_month_end = float(pot.balance)
+        target              = float(pot.target_amount)
 
         #ontrack: deadline has not yet passed, or goal has already been met
-        if goal.deadline:
-            deadline    = date.fromisoformat(goal.deadline)
+        if pot.deadline:
+            deadline    = date.fromisoformat(pot.deadline)
             today       = date.today()
             on_track    = amount_at_month_end >= target or deadline >= today
         else:
             on_track = True
 
         goal_summaries.append({
-            "goal_id":            goal.id,
+            "goal_id":            pot.id,
             "target_amount":      target,
             "amount_at_month_end": amount_at_month_end,
             "on_track":           on_track,

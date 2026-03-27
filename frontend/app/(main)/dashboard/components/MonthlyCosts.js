@@ -2,10 +2,13 @@
 
 import Card from "../../../components/Card";
 
-export default function MonthlyCosts({ fixedCosts, onPaidToggle }) {
+export default function MonthlyCosts({ fixedCosts, onPaidToggle, onManage }) {
   return (
     <Card>
-      <h2 className="text-text mb-3">Monthly Costs</h2>
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-text">Monthly Costs</h2>
+        <button onClick={onManage} className="text-xs text-muted hover:text-accent transition-colors">Edit</button>
+      </div>
 
       {fixedCosts.length === 0 ? <p className="text-sm text-muted">No fixed costs found.</p> : (
         <ul>

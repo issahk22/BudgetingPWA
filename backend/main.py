@@ -12,7 +12,7 @@ from envelope_router import router as envelope_router
 
 from database import Base, engine, get_db
 from history_database import Base as HistoryBase, engine as history_engine
-from models import User, Account, FixedCost, Envelope, Transaction, Goal, Transfer, MonthOpenSnapshot, Job, ShiftType, Shift
+from models import User, Account, FixedCost, Envelope, Transaction, Transfer, MonthOpenSnapshot, Job, ShiftType, Shift
 from month_close import gather_live_data, calculate_summaries, write_to_history, reset_live_db
 from history_database import SessionLocal as HistorySession
 from schemas import (UserCreate, UserResponse,
@@ -20,7 +20,6 @@ from schemas import (UserCreate, UserResponse,
     EnvelopeCreate, EnvelopeUpdate, EnvelopeResponse,
     FixedCostCreate, FixedCostUpdate, FixedCostResponse,
     TransactionCreate, TransactionUpdate, TransactionResponse,
-    GoalCreate, GoalUpdate, GoalResponse,
     TransferCreate, TransferResponse,
     MonthOpenSnapshotCreate, MonthOpenSnapshotResponse,
     JobCreate, JobUpdate, JobResponse,
@@ -112,6 +111,10 @@ def update_account(account_id: str, updates: AccountUpdate, db: Session = Depend
         account.account_type = updates.account_type
     if updates.include_in_budget is not None:
         account.include_in_budget = updates.include_in_budget
+    if updates.target_amount is not None:
+        account.target_amount = updates.target_amount
+    if updates.deadline is not None:
+        account.deadline = updates.deadline
 
     db.commit()
     db.refresh(account)
@@ -243,60 +246,6 @@ def delete_envelope(envelope_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"detail": "Envelope deleted"}
-
-
-
-
-##-----Goal Routes-----##
-
-@app.post("/goals", response_model=GoalResponse)
-def create_goal(goal: GoalCreate, db: Session = Depends(get_db)):
-
-    new_goal = Goal(**goal.model_dump())
-    db.add(new_goal)
-    db.commit()
-    db.refresh(new_goal)
-
-    return new_goal
-
-
-@app.get("/goals", response_model=list[GoalResponse])
-def get_goals(db: Session = Depends(get_db)):
-
-    return db.query(Goal).all()
-
-
-@app.put("/goals/{goal_id}", response_model=GoalResponse)
-def update_goal(goal_id: str, updates: GoalUpdate, db: Session = Depends(get_db)):
-
-    goal = db.query(Goal).filter(Goal.id == goal_id).first()
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-
-    if updates.target_amount is not None:
-        goal.target_amount = updates.target_amount
-    if updates.current_savings is not None:
-        goal.current_savings = updates.current_savings
-    if updates.deadline is not None:
-        goal.deadline = updates.deadline
-
-    db.commit()
-    db.refresh(goal)
-
-    return goal
-
-
-@app.delete("/goals/{goal_id}")
-def delete_goal(goal_id: str, db: Session = Depends(get_db)):
-
-    goal = db.query(Goal).filter(Goal.id == goal_id).first()
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-
-    db.delete(goal)
-    db.commit()
-
-    return {"detail": "Goal deleted"}
 
 
 

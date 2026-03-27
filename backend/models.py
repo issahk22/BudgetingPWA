@@ -22,6 +22,9 @@ class Account(Base):
     balance = Column(Numeric(12, 2), nullable=False)
     account_type = Column(String, nullable=False)
     include_in_budget = Column(Boolean, nullable=False, default=True)  # pots are excluded from budget total by default
+    #pots can optionally have a savings goal attached (target amount + deadline)
+    target_amount = Column(Numeric(12, 2), nullable=True)
+    deadline = Column(String, nullable=True)
 
 
 class FixedCost(Base):
@@ -40,15 +43,6 @@ class Envelope(Base):
     envelope_name = Column(String, nullable=False)
     allocated_amount = Column(Numeric(12, 2), nullable=False)
     balance = Column(Numeric(12, 2), nullable=False)
-
-
-class Goal(Base):
-    __tablename__ = "goals"
-
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    target_amount = Column(Numeric(12, 2), nullable=False)
-    current_savings = Column(Numeric(12, 2), nullable=True)
-    deadline = Column(String, nullable=True)
 
 
 class Transaction(Base):

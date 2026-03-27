@@ -26,12 +26,17 @@ class AccountCreate(BaseModel):
     balance: Decimal
     account_type: str           # "bank" or "pot"
     include_in_budget: bool = True
+    #optional savings goal fields for pots
+    target_amount: Decimal | None = None
+    deadline: str | None = None
 
 class AccountUpdate(BaseModel):
     account_name: str | None = None
     balance: Decimal | None = None
     account_type: str | None = None
     include_in_budget: bool | None = None
+    target_amount: Decimal | None = None
+    deadline: str | None = None
 
 class AccountResponse(BaseModel):
     id: str
@@ -39,6 +44,8 @@ class AccountResponse(BaseModel):
     balance: Decimal
     account_type: str
     include_in_budget: bool
+    target_amount: Decimal | None
+    deadline: str | None
     class Config:
         from_attributes = True
 
@@ -85,29 +92,6 @@ class EnvelopeResponse(BaseModel):
     balance: Decimal
     class Config:
         from_attributes = True
-
-
-
-##-----Goal Schemas-----##
-
-class GoalCreate(BaseModel):
-    target_amount: Decimal
-    current_savings: Decimal | None = None
-    deadline: str | None = None
-
-class GoalUpdate(BaseModel):
-    target_amount: Decimal | None = None
-    current_savings: Decimal | None = None
-    deadline: str | None = None
-
-class GoalResponse(BaseModel):
-    id: str
-    target_amount: Decimal
-    current_savings: Decimal | None
-    deadline: str | None
-    class Config:
-        from_attributes = True
-
 
 
 

@@ -152,7 +152,7 @@ export default function Employment() {
 
 
         <button
-          onClick={() => router.push("/onboarding/3.goals")}
+          onClick={() => router.push("/onboarding/4.accounts")}
           className="btn-primary w-full mt-6"
         >
           Next
