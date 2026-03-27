@@ -224,6 +224,9 @@ def update_envelope(envelope_id: str, updates: EnvelopeUpdate, db: Session = Dep
         envelope.envelope_name = updates.envelope_name
     if updates.allocated_amount is not None:
         envelope.allocated_amount = updates.allocated_amount
+        #if new allocation is lower than current balance reduce balance to new allocated amount 
+        if envelope.balance > updates.allocated_amount:
+            envelope.balance = updates.allocated_amount
 
     db.commit()
     db.refresh(envelope)
