@@ -11,7 +11,9 @@ class User(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String, nullable=False, unique=True)
-    pin = Column(Integer, nullable=True)
+    # bcrypt hash of the user's 4-digit PIN, or NULL if no lock is configured.
+    # verified via POST /auth/verify-pin — never sent to the frontend.
+    pin = Column(String, nullable=True)
 
 
 class Account(Base):

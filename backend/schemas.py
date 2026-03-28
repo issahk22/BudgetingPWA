@@ -17,6 +17,15 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
+##       PIN / Auth Schemas         ##
+
+class PinInput(BaseModel):
+    pin: str
+
+class PinVerifyResponse(BaseModel):
+    valid: bool
+
+
 
 
 ##-----Account Schemas-----##

@@ -1,6 +1,8 @@
 import sys, os
+import bcrypt
 sys.path.append(os.path.join(os.path.dirname(__file__), "counterfactual"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "envelope_optimisation"))
+
 
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
@@ -17,6 +19,7 @@ from history_models import MonthSummary, EnvelopeHistory, ShiftHistory, FixedCos
 from month_close import gather_live_data, calculate_summaries, write_to_history, reset_live_db
 from history_database import SessionLocal as HistorySession
 from schemas import (UserCreate, UserResponse,
+    PinInput, PinVerifyResponse,
     AccountCreate, AccountUpdate, AccountResponse,
     EnvelopeCreate, EnvelopeUpdate, EnvelopeResponse,
     FixedCostCreate, FixedCostUpdate, FixedCostResponse,
@@ -55,11 +58,38 @@ app.add_middleware(
 
 
 
-# onboarding complete check
+# onboarding complete check and pin check (for routing)
 @app.get("/onboarding-status")
 def onboarding_status(db: Session = Depends(get_db)):
     user = db.query(User).first()
-    return {"completed": user is not None}
+    return {
+        "completed": user is not None,
+        "pin_set":   user is not None and user.pin is not None,
+    }
+
+
+
+
+##-----PIN Routes-----##
+
+#sets the pin
+@app.post("/auth/set-pin")
+def set_pin(payload: PinInput, db: Session = Depends(get_db)):
+    user = db.query(User).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="No user found")
+    user.pin = bcrypt.hashpw(payload.pin.encode(), bcrypt.gensalt()).decode()
+    db.commit()
+    return {"detail": "PIN set"}
+
+#verifies it 
+@app.post("/auth/verify-pin", response_model=PinVerifyResponse)
+def verify_pin(payload: PinInput, db: Session = Depends(get_db)):
+    user = db.query(User).first()
+    if not user or user.pin is None:
+        raise HTTPException(status_code=400, detail="No PIN set")
+    valid = bcrypt.checkpw(payload.pin.encode(), user.pin.encode())
+    return {"valid": valid}
 
 
 @app.post("/users", response_model=UserResponse)
