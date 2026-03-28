@@ -109,7 +109,7 @@ export default function Accounts() {
             <span className="flex-1">
               <span className="type-label">({acc.type})</span> {acc.name}: £{acc.balance}
               {acc.type === "pot" && acc.target_amount && (
-                <span className="text-xs" style={{ color: "#6b7280" }}> — goal £{acc.target_amount}{acc.deadline ? ` by ${acc.deadline}` : ""}</span>
+                <span className="text-xs" style={{ color: "#6b7280" }}>  (Goal: £{acc.target_amount}{acc.deadline ? ` by ${acc.deadline}` : ""} )</span>
               )}
             </span>
             <button onClick={() => removeAccount(i)} className="btn-remove">Remove</button>

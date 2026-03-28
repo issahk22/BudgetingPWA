@@ -113,7 +113,7 @@ class FixedCostHistoryResponse(BaseModel):
 class GoalHistoryCreate(BaseModel):
     month: int
     year: int
-    goal_name: str
+    goal_id: str  
     target_amount: Decimal
     amount_at_month_end: Decimal
     on_track: bool
@@ -121,7 +121,7 @@ class GoalHistoryCreate(BaseModel):
 class GoalHistoryResponse(BaseModel):
     month: int
     year: int
-    goal_name: str
+    goal_id: str
     target_amount: Decimal
     amount_at_month_end: Decimal
     on_track: bool

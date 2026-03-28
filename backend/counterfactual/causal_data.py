@@ -2,7 +2,10 @@
 import sqlite3
 import os
 
-HISTORY_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "history.db")
+
+HISTORY_DB = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "history.db"
+)
 
 
 def get_monthly_panel():

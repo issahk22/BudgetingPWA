@@ -176,7 +176,7 @@ def create_goal_history(goal: GoalHistoryCreate, db: Session = Depends(get_histo
     existing = db.query(GoalHistory).filter(
         GoalHistory.month == goal.month,
         GoalHistory.year == goal.year,
-        GoalHistory.goal_name == goal.goal_name
+        GoalHistory.goal_id == goal.goal_id
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Goal history for this month already exists")

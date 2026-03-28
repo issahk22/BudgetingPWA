@@ -6,7 +6,7 @@ from causal_data import get_monthly_panel, validate_data_sufficiency
 
 router = APIRouter(prefix="/counterfactual")
 
-HISTORY_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "history.db")
+HISTORY_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "history.db")
 
 
 class HindsightRequest(BaseModel):

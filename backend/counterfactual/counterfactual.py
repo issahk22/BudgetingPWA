@@ -7,7 +7,7 @@ import random
 from sklearn.linear_model import LinearRegression
 from causal_data import get_monthly_panel, validate_data_sufficiency
 
-HISTORY_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "history.db")
+HISTORY_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "history.db")
 
 ### USE CASE 1 ###
 
@@ -114,17 +114,17 @@ def monte_carlo(income_model, spending_model, hours, n_simulations=1000): #1000 
         u_income = random.choice(income_residuals)
         u_spending = random.choice(spending_residuals)
 
-        #deterministic prediction (from SCM) + the sampled noise 
-        sim_income = base_income + u_income
+        #deterministic prediction (from SCM) + the sampled noise
+        draw_income = base_income + u_income
 
-        #feeds noisy income through model b to calculate spending        
-        sim_spent = max(0.0, predict_spending(spending_model, sim_income) + u_spending) #max to prevent negative spending
-        sim_left_over = sim_income - sim_spent #amount left after spending
+        #feeds noisy income through model b to calculate spending
+        draw_spent = max(0.0, predict_spending(spending_model, draw_income) + u_spending) #max to prevent negative spending
+        draw_left  = draw_income - draw_spent #amount left after spending
 
         #stores each value in the list
-        sim_income.append(sim_income)
-        sim_spent.append(sim_spent)
-        sim_left.append(sim_left_over)
+        sim_income.append(draw_income)
+        sim_spent.append(draw_spent)
+        sim_left.append(draw_left)
 
 
     def _percentiles(data):
