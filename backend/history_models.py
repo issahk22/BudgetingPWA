@@ -43,7 +43,7 @@ class ShiftHistory(Base):
     hourly_base_rate = Column(Numeric(8, 2), nullable=False)
     hours_worked = Column(Numeric(6, 2), nullable=False)
     shift_type = Column(String, nullable=False)
-    rate_multiplier = Column(Numeric(4, 2), nullable=False)
+    rate_multiplier = Column(Numeric(4, 3), nullable=False)
     total_pay = Column(Numeric(12, 2), nullable=False)
 
 

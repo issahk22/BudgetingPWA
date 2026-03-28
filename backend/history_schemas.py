@@ -12,7 +12,8 @@ class MonthSummaryCreate(BaseModel):
     year: int
     accounts_opening_balance: Decimal
     accounts_closing_balance: Decimal
-    total_income: Decimal
+    shift_calculated_income: Decimal
+    actual_net_income: Decimal
     total_spent: Decimal
     shifts_worked: int
     hours_worked: Decimal
@@ -22,7 +23,8 @@ class MonthSummaryResponse(BaseModel):
     year: int
     accounts_opening_balance: Decimal
     accounts_closing_balance: Decimal
-    total_income: Decimal
+    shift_calculated_income: Decimal
+    actual_net_income: Decimal
     total_spent: Decimal
     shifts_worked: int
     hours_worked: Decimal
@@ -63,7 +65,7 @@ class ShiftHistoryCreate(BaseModel):
     month: int
     year: int
     date: date
-    job_id: int
+    job_id: str
     hourly_base_rate: Decimal
     hours_worked: Decimal
     shift_type: str
@@ -74,7 +76,7 @@ class ShiftHistoryResponse(BaseModel):
     month: int
     year: int
     date: date
-    job_id: int
+    job_id: str
     hourly_base_rate: Decimal
     hours_worked: Decimal
     shift_type: str
@@ -113,7 +115,7 @@ class FixedCostHistoryResponse(BaseModel):
 class GoalHistoryCreate(BaseModel):
     month: int
     year: int
-    goal_id: str  
+    goal_id: str
     target_amount: Decimal
     amount_at_month_end: Decimal
     on_track: bool

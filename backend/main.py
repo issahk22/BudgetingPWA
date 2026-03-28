@@ -11,8 +11,9 @@ from envelope_router import router as envelope_router
 
 
 from database import Base, engine, get_db
-from history_database import Base as HistoryBase, engine as history_engine
+from history_database import Base as HistoryBase, engine as history_engine, get_history_db
 from models import User, Account, FixedCost, Envelope, Transaction, Transfer, MonthOpenSnapshot, Job, ShiftType, Shift
+from history_models import MonthSummary, EnvelopeHistory, ShiftHistory, FixedCostHistory, GoalHistory
 from month_close import gather_live_data, calculate_summaries, write_to_history, reset_live_db
 from history_database import SessionLocal as HistorySession
 from schemas import (UserCreate, UserResponse,
@@ -25,6 +26,13 @@ from schemas import (UserCreate, UserResponse,
     JobCreate, JobUpdate, JobResponse,
     ShiftTypeCreate, ShiftTypeResponse,
     ShiftCreate, ShiftUpdate, ShiftResponse,
+)
+from history_schemas import (
+    MonthSummaryResponse,
+    EnvelopeHistoryResponse,
+    ShiftHistoryResponse,
+    FixedCostHistoryResponse,
+    GoalHistoryResponse,
 )
 
 # creates tables in db if they don't exist already
@@ -573,6 +581,50 @@ def delete_shift(shift_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"detail": "Shift deleted"}
+
+
+
+
+##-----History Routes-----##
+
+@app.get("/history/months", response_model=list[MonthSummaryResponse])
+def get_all_month_summaries(db: Session = Depends(get_history_db)):
+    return db.query(MonthSummary).order_by(
+        MonthSummary.year.desc(),
+        MonthSummary.month.desc(),
+    ).all()
+
+
+@app.get("/history/envelopes/{year}/{month}", response_model=list[EnvelopeHistoryResponse])
+def get_envelope_history(year: int, month: int, db: Session = Depends(get_history_db)):
+    return db.query(EnvelopeHistory).filter(
+        EnvelopeHistory.month == month,
+        EnvelopeHistory.year == year,
+    ).all()
+
+
+@app.get("/history/shifts/{year}/{month}", response_model=list[ShiftHistoryResponse])
+def get_shift_history(year: int, month: int, db: Session = Depends(get_history_db)):
+    return db.query(ShiftHistory).filter(
+        ShiftHistory.month == month,
+        ShiftHistory.year == year,
+    ).order_by(ShiftHistory.date).all()
+
+
+@app.get("/history/fixed-costs/{year}/{month}", response_model=list[FixedCostHistoryResponse])
+def get_fixed_cost_history(year: int, month: int, db: Session = Depends(get_history_db)):
+    return db.query(FixedCostHistory).filter(
+        FixedCostHistory.month == month,
+        FixedCostHistory.year == year,
+    ).all()
+
+
+@app.get("/history/goals/{year}/{month}", response_model=list[GoalHistoryResponse])
+def get_goal_history(year: int, month: int, db: Session = Depends(get_history_db)):
+    return db.query(GoalHistory).filter(
+        GoalHistory.month == month,
+        GoalHistory.year == year,
+    ).all()
 
 
 

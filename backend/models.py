@@ -97,5 +97,5 @@ class Shift(Base):
     date = Column(String, nullable=False)
     hours_worked = Column(Numeric(5, 2), nullable=False)
     shift_type = Column(String, nullable=False)   # "regular" | "overtime" | "night" | "weekend"
-    rate_multiplier = Column(Numeric(4, 2), nullable=False, default=1.00)
+    rate_multiplier = Column(Numeric(4, 3), nullable=False, default=1.000)
     total_pay = Column(Numeric(12, 2), nullable=False)  # hours_worked x base_hourly_rate x rate_multiplier

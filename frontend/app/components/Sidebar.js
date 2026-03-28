@@ -8,6 +8,7 @@ export default function Sidebar() {
 
   const links = [
     { href: "/dashboard", label: "Dashboard" },
+    { href: "/history", label: "History" },
     { href: "/whatif", label: "What If" },
   ];
 
