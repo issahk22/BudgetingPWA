@@ -13,10 +13,12 @@ export default function Home() {
       const data = await res.json();
 
       if (data.completed) {
-        // route to dashboard if true 
-        router.push("/dashboard");
+        if (data.pin_set && sessionStorage.getItem("unlocked") !== "true") {
+          router.push("/lock");
+        } else {
+          router.push("/dashboard");
+        }
       } else {
-       
         router.push("/onboarding/1.username");
       }
     }

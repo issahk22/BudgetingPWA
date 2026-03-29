@@ -11,6 +11,7 @@ const OnboardingContext = createContext(null);
 export function OnboardingProvider({ children }) {
   const [data, setData] = useState({
     username: "",
+    pin: "",
     accounts: [],
     fixedCosts: [],
     envelopes: [],

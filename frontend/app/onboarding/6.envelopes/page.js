@@ -112,6 +112,14 @@ export default function Envelopes() {
         });
       }
 
+      if (data.pin) {
+        await fetch(`${API}/auth/set-pin`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin: data.pin }),
+        });
+      }
+
       router.push("/dashboard");
 
     } catch (err) {
