@@ -108,6 +108,7 @@ class EnvelopeResponse(BaseModel):
 
 class TransactionCreate(BaseModel):
     envelope_id: str
+    account_id: str | None = None
     amount: Decimal
     description: str | None = None
     date: str | None = None
@@ -119,6 +120,7 @@ class TransactionUpdate(BaseModel):
 class TransactionResponse(BaseModel):
     id: str
     envelope_id: str
+    account_id: str | None
     amount: Decimal
     description: str | None
     date: str | None

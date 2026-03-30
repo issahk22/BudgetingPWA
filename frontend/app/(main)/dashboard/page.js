@@ -309,6 +309,7 @@ export default function Dashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           envelope_id: form.envelope_id,
+          account_id: form.account_id || null,
           amount: parseFloat(form.amount),
           description: form.description || null,
           date: form.date || null,
@@ -316,16 +317,12 @@ export default function Dashboard() {
       });
       const newTx = await txRes.json();
 
-      const account = accounts.find((a) => a.id === form.account_id);
-      if (account) {
-        const newBalance = parseFloat(account.balance) - parseFloat(form.amount);
-        await fetch(`${API}/accounts/${account.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ balance: newBalance }),
-        });
+      // update local state to reflect backend changes
+      if (form.account_id) {
         setAccounts((prev) =>
-          prev.map((a) => a.id === account.id ? { ...a, balance: newBalance } : a)
+          prev.map((a) => a.id === form.account_id
+            ? { ...a, balance: parseFloat(a.balance) - parseFloat(form.amount) }
+            : a)
         );
       }
 
@@ -618,6 +615,39 @@ export default function Dashboard() {
   }
 
 
+  async function handleDeleteTransaction(tx) {
+    try {
+      await fetch(`${API}/transactions/${tx.id}`, { method: "DELETE" });
+      
+      //removed deleted transaction from screen
+      setTransactions((prev) => ({
+        ...prev,
+        [tx.envelope_id]: (prev[tx.envelope_id] || []).filter((t) => t.id !== tx.id),
+      }));
+
+      //adds transaction amnt back to envelope once deleted
+      setEnvelopes((prev) =>
+        prev.map((env) =>
+          env.id === tx.envelope_id
+            ? { ...env, balance: parseFloat(env.balance) + parseFloat(tx.amount) }
+            : env
+        )
+      );
+
+      //adds transaction amnt back to account balance 
+      if (tx.account_id) {
+        setAccounts((prev) =>
+          prev.map((a) => a.id === tx.account_id
+            ? { ...a, balance: parseFloat(a.balance) + parseFloat(tx.amount) }
+            : a)
+        );
+      }
+    } catch (err) {
+      console.error("Failed to delete transaction:", err);
+    }
+  }
+
+
   if (loading) return <p className="text-muted text-lg">Loading...</p>;
 
 
@@ -796,8 +826,10 @@ export default function Dashboard() {
               const unpaidFixedTotal = fixedCosts
                 .filter((c) => !c.paid) //filters unpaid costs 
                 .reduce((sum, c) => sum + parseFloat(c.amount), 0); //adds up all unpaid costs 
-              const totalAllocated = envelopes.reduce((sum, e) => sum + parseFloat(e.allocated_amount), 0);
-              const leftToBudget = accBal - unpaidFixedTotal - totalAllocated;
+
+              //amount left to budget = Account balance - (remaining balances in envelope + unpaid fixed costs total)
+              const totalEnvelopeBalance = envelopes.reduce((sum, e) => sum + parseFloat(e.balance), 0);
+              const leftToBudget = accBal - unpaidFixedTotal - totalEnvelopeBalance;
               return (
                 <div className="bg-gray-800 rounded-lg px-4 py-2 mb-4 flex justify-between items-center text-sm">
                   <span className="text-muted">Amount left to budget</span>
@@ -828,6 +860,7 @@ export default function Dashboard() {
                     onSaveEdit={handleEditEnvelope}
                     onCancelEdit={() => setEditingEnvelope(null)}
                     onDelete={handleDeleteEnvelope}
+                    onDeleteTx={handleDeleteTransaction}
                   />
                 ))}
               </div>

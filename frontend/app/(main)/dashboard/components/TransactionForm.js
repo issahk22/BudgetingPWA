@@ -22,9 +22,9 @@ export default function TransactionForm({ form, setForm, envelopes, accounts, su
         <select required value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}
           className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent">
           <option value="">Select account</option>
-          {accounts.map((acc) => (
+          {accounts.filter((acc) => acc.account_type === "bank").map((acc) => (
             <option key={acc.id} value={acc.id}>
-              {acc.account_name} ({acc.account_type}) — £{parseFloat(acc.balance).toFixed(2)}
+              {acc.account_name} : £{parseFloat(acc.balance).toFixed(2)}
             </option>
           ))}
         </select>
@@ -38,7 +38,7 @@ export default function TransactionForm({ form, setForm, envelopes, accounts, su
 
       <label className="flex flex-col gap-1 text-sm text-muted">
         Date
-        <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
+        <input type="date" value={form.date} max={new Date().toISOString().split("T")[0]} onChange={(e) => setForm({ ...form, date: e.target.value })}
           className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
       </label>
 

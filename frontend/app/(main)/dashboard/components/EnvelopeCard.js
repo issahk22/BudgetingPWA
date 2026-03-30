@@ -5,7 +5,7 @@ import Card from "../../../components/Card";
 export default function EnvelopeCard({
   env, isOpen, envTxs, editingEnvelope,
   editEnvName, setEditEnvName, editEnvAmount, setEditEnvAmount,
-  onToggle, onStartEdit, onSaveEdit, onCancelEdit, onDelete,
+  onToggle, onStartEdit, onSaveEdit, onCancelEdit, onDelete, onDeleteTx,
 }) {
   const balance = parseFloat(env.balance);
   const allocated = parseFloat(env.allocated_amount);
@@ -71,12 +71,18 @@ export default function EnvelopeCard({
               {envTxs.length === 0 ? <p className="text-xs text-muted">No transactions yet.</p> : (
                 <ul>
                   {envTxs.map((tx) => (
-                    <li key={tx.id} className="py-1">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-muted">{tx.description || "—"}</span>
-                        <span className="text-negative">-£{parseFloat(tx.amount).toFixed(2)}</span>
+                    <li key={tx.id} className="py-1 flex justify-between items-start">
+                      <div>
+                        <div className="flex gap-3 items-center text-xs">
+                          <span className="text-muted">{tx.description || "—"}</span>
+                          <span className="text-negative">-£{parseFloat(tx.amount).toFixed(2)}</span>
+                        </div>
+                        {tx.date && <p className="text-xs text-muted">{tx.date}</p>}
                       </div>
-                      {tx.date && <p className="text-xs text-muted">{tx.date}</p>}
+                      <button
+                        onClick={() => onDeleteTx(tx)}
+                        className="text-muted hover:text-negative transition-colors text-xs ml-2"
+                      >✕</button>
                     </li>
                   ))}
                 </ul>

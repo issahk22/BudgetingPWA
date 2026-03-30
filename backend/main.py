@@ -300,8 +300,13 @@ def create_transaction(transaction: TransactionCreate, db: Session = Depends(get
     if not envelope:
         raise HTTPException(status_code=404, detail="Envelope not found")
 
-    # deduct from balance only — allocated_amount stays fixed as the original budget
     envelope.balance = envelope.balance - transaction.amount
+
+    #deducts transaction amount from account balance
+    if transaction.account_id:
+        account = db.query(Account).filter(Account.id == transaction.account_id).first()
+        if account:
+            account.balance = account.balance - transaction.amount
 
     new_transaction = Transaction(**transaction.model_dump())
     db.add(new_transaction)
@@ -342,10 +347,15 @@ def delete_transaction(transaction_id: str, db: Session = Depends(get_db)):
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
-    # restore the amount back to balance when a transaction is deleted
     envelope = db.query(Envelope).filter(Envelope.id == transaction.envelope_id).first()
     if envelope:
         envelope.balance = envelope.balance + transaction.amount
+
+    #if a transaction is deleted, adds back balance to account
+    if transaction.account_id:
+        account = db.query(Account).filter(Account.id == transaction.account_id).first()
+        if account:
+            account.balance = account.balance + transaction.amount
 
     db.delete(transaction)
     db.commit()
