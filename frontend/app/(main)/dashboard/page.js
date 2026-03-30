@@ -793,9 +793,11 @@ export default function Dashboard() {
             {(() => {
               const primaryAcc = accounts.find((a) => a.include_in_budget);
               const accBal = primaryAcc ? parseFloat(primaryAcc.balance) : 0;
-              const fixedTotal = fixedCosts.reduce((sum, c) => sum + parseFloat(c.amount), 0);
+              const unpaidFixedTotal = fixedCosts
+                .filter((c) => !c.paid) //filters unpaid costs 
+                .reduce((sum, c) => sum + parseFloat(c.amount), 0); //adds up all unpaid costs 
               const totalAllocated = envelopes.reduce((sum, e) => sum + parseFloat(e.allocated_amount), 0);
-              const leftToBudget = accBal - fixedTotal - totalAllocated;
+              const leftToBudget = accBal - unpaidFixedTotal - totalAllocated;
               return (
                 <div className="bg-gray-800 rounded-lg px-4 py-2 mb-4 flex justify-between items-center text-sm">
                   <span className="text-muted">Amount left to budget</span>
