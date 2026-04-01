@@ -19,7 +19,7 @@ export default function ShiftForm({ shiftForm, setShiftForm, jobs, shiftTypes, s
 
       <label className="flex flex-col gap-1 text-sm text-muted">
         Date
-        <input type="date" required value={shiftForm.date} max={new Date().toISOString().split("T")[0]} onChange={(e) => setShiftForm({ ...shiftForm, date: e.target.value })}
+        <input type="date" required value={shiftForm.date} onChange={(e) => setShiftForm({ ...shiftForm, date: e.target.value })}
           className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
       </label>
 

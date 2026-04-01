@@ -3,7 +3,7 @@
 import Card from "../../../components/Card";
 
 export default function EnvelopeCard({
-  env, isOpen, envTxs, editingEnvelope,
+  env, isOpen, envTxs, accounts, editingEnvelope,
   editEnvName, setEditEnvName, editEnvAmount, setEditEnvAmount,
   onToggle, onStartEdit, onSaveEdit, onCancelEdit, onDelete, onDeleteTx,
 }) {
@@ -70,14 +70,17 @@ export default function EnvelopeCard({
             <div className="mt-3 pt-3 border-t border-gray-700">
               {envTxs.length === 0 ? <p className="text-xs text-muted">No transactions yet.</p> : (
                 <ul>
-                  {envTxs.map((tx) => (
+                  {[...envTxs].sort((a, b) => new Date(b.date) - new Date(a.date)).map((tx) => (
                     <li key={tx.id} className="py-1 flex justify-between items-start">
                       <div>
                         <div className="flex gap-3 items-center text-xs">
                           <span className="text-muted">{tx.description || "—"}</span>
                           <span className="text-negative">-£{parseFloat(tx.amount).toFixed(2)}</span>
                         </div>
-                        {tx.date && <p className="text-xs text-muted">{tx.date}</p>}
+                        <div className="flex gap-2 text-xs text-muted">
+                          {tx.date && <span>{tx.date}</span>}
+                          {tx.account_id && <span>· {accounts.find((a) => a.id === tx.account_id)?.account_name ?? "Unknown"}</span>}
+                        </div>
                       </div>
                       <button
                         onClick={() => onDeleteTx(tx)}

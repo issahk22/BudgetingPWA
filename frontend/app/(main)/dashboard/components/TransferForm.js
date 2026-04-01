@@ -13,7 +13,7 @@ export default function TransferForm({ transferForm, setTransferForm, accounts, 
           <option value="">Select account</option>
           {accounts.map((acc) => (
             <option key={acc.id} value={acc.id}>
-              {acc.account_name} ({acc.account_type}) — £{parseFloat(acc.balance).toFixed(2)}
+              {acc.account_name} ({acc.account_type}) : £{parseFloat(acc.balance).toFixed(2)}
             </option>
           ))}
         </select>
@@ -28,7 +28,7 @@ export default function TransferForm({ transferForm, setTransferForm, accounts, 
             .filter((acc) => acc.id !== transferForm.from_account_id)
             .map((acc) => (
               <option key={acc.id} value={acc.id}>
-                {acc.account_name} ({acc.account_type}) — £{parseFloat(acc.balance).toFixed(2)}
+                {acc.account_name} ({acc.account_type}) : £{parseFloat(acc.balance).toFixed(2)}
               </option>
             ))}
         </select>
@@ -42,7 +42,7 @@ export default function TransferForm({ transferForm, setTransferForm, accounts, 
 
       <label className="flex flex-col gap-1 text-sm text-muted">
         Date
-        <input type="date" value={transferForm.date} max={new Date().toISOString().split("T")[0]} onChange={(e) => setTransferForm({ ...transferForm, date: e.target.value })}
+        <input type="date" value={transferForm.date} onChange={(e) => setTransferForm({ ...transferForm, date: e.target.value })}
           className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
       </label>
 

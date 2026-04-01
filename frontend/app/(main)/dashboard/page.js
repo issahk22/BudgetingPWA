@@ -859,6 +859,7 @@ export default function Dashboard() {
                     onStartEdit={() => { setEditingEnvelope(env.id); setEditEnvName(env.envelope_name); setEditEnvAmount(parseFloat(env.allocated_amount).toFixed(2)); }}
                     onSaveEdit={handleEditEnvelope}
                     onCancelEdit={() => setEditingEnvelope(null)}
+                    accounts={accounts}
                     onDelete={handleDeleteEnvelope}
                     onDeleteTx={handleDeleteTransaction}
                   />

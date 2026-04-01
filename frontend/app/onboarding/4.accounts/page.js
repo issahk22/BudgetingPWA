@@ -89,6 +89,7 @@ export default function Accounts() {
             <input
               type="date"
               value={input.deadline}
+              min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
               onChange={(e) => setInput({ ...input, deadline: e.target.value })}
               className="flex-1 rounded px-3 py-2 text-sm"
             />

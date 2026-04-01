@@ -12,7 +12,7 @@ export default function TransactionForm({ form, setForm, envelopes, accounts, su
           className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent">
           <option value="">Select envelope</option>
           {envelopes.map((env) => (
-            <option key={env.id} value={env.id}>{env.envelope_name}</option>
+            <option key={env.id} value={env.id}>{env.envelope_name} : £{parseFloat(env.balance).toFixed(2)}</option>
           ))}
         </select>
       </label>
@@ -38,7 +38,7 @@ export default function TransactionForm({ form, setForm, envelopes, accounts, su
 
       <label className="flex flex-col gap-1 text-sm text-muted">
         Date
-        <input type="date" value={form.date} max={new Date().toISOString().split("T")[0]} onChange={(e) => setForm({ ...form, date: e.target.value })}
+        <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
           className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
       </label>
 
