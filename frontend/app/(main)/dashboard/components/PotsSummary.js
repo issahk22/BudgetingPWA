@@ -2,35 +2,62 @@
 
 import Card from "../../../components/Card";
 
-export default function AccountsSummary({ accounts, openAccountLogs, onToggle, getAccountTransfers, getAccountName }) {
-  const banks = accounts.filter((acc) => acc.account_type === "bank");
-  const totalBankBalance = banks
-    .filter((acc) => acc.include_in_budget)
-    .reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
+export default function PotsSummary({ accounts, openAccountLogs, onToggle, getAccountTransfers, getAccountName, onManage }) {
+  const pots = accounts.filter((acc) => acc.account_type === "pot");
+  const totalPotBalance = pots.reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
+  const hasGoals = pots.some((p) => p.target_amount);
 
   return (
     <Card className="w-full">
-      <h2 className="text-text mb-1">Accounts</h2>
-      <p className="text-2xl font-bold text-white mb-3">£{totalBankBalance.toFixed(2)}</p>
+      <div className="flex justify-between items-center mb-1">
+        <h2 className="text-text">Pots</h2>
+        {hasGoals && (
+          <button onClick={onManage} className="text-xs text-muted hover:text-accent transition-colors">Edit</button>
+        )}
+      </div>
+      <p className="text-2xl font-bold text-white mb-3">£{totalPotBalance.toFixed(2)}</p>
 
-      {banks.length === 0 ? <p className="text-sm text-muted">No accounts found.</p> : (
+      {pots.length === 0 ? <p className="text-sm text-muted">No pots found.</p> : (
         <ul className="space-y-0">
-          {[...banks].sort((a, b) => (b.include_in_budget ? 1 : 0) - (a.include_in_budget ? 1 : 0)).map((acc) => {
+          {pots.map((acc) => {
             const isOpen = openAccountLogs.has(acc.id);
             const accTransfers = getAccountTransfers(acc.id);
+            const target = acc.target_amount ? parseFloat(acc.target_amount) : null;
+            const progressPct = target && target > 0 ? Math.min(100, (parseFloat(acc.balance) / target) * 100) : null;
             return (
               <li key={acc.id}>
                 <div
                   className="flex justify-between items-center py-2 border-b border-gray-700 cursor-pointer hover:bg-gray-700/30 transition-colors"
                   onClick={() => onToggle(acc.id)}
                 >
-                  <span className="text-sm text-text">
+                  <span className="text-sm text-text flex-1 min-w-0 pr-2">
                     {acc.account_name}
+                    {target && (
+                      <span className="block text-xs text-muted mt-0.5">
+                        Goal: £{parseFloat(acc.balance).toFixed(2)} / £{target.toFixed(2)}
+                        {acc.monthly_contribution && (
+                          <span className="ml-2 text-accent">· £{parseFloat(acc.monthly_contribution).toFixed(2)}/mo</span>
+                        )}
+                        {acc.deadline && (
+                          <span className="ml-1">· by {acc.deadline}</span>
+                        )}
+                      </span>
+                    )}
                   </span>
-                  <span className="text-sm text-text font-medium">
+                  <span className="text-sm text-text font-medium whitespace-nowrap">
                     £{parseFloat(acc.balance).toFixed(2)} <span className="text-xs text-muted">{isOpen ? "▲" : "▼"}</span>
                   </span>
                 </div>
+
+                {/* progress bar for pots with a goal */}
+                {progressPct !== null && (
+                  <div className="w-full h-1 bg-gray-700 rounded-full overflow-hidden mt-1 mb-1">
+                    <div
+                      className="h-full bg-accent transition-all"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+                )}
 
                 {isOpen && (
                   <div className="pl-3 mt-2 mb-2 border-l-2 border-border">

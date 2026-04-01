@@ -9,8 +9,10 @@ import AllocationsModal from "./components/AllocationsModal";
 import EnvelopeCard from "./components/EnvelopeCard";
 import AddEnvelopeModal from "./components/AddEnvelopeModal";
 import AccountsSummary from "./components/AccountsSummary";
+import PotsSummary from "./components/PotsSummary";
 import MonthlyCosts from "./components/MonthlyCosts";
 import ManageCostsModal from "./components/ManageCostsModal";
+import ManagePotsModal from "./components/ManagePotsModal";
 import ShiftsCard from "./components/ShiftsCard";
 
 const API = "http://localhost:8000";
@@ -60,6 +62,9 @@ export default function Dashboard() {
 
   //manage monthly costs modal visibility
   const [showManageCosts, setShowManageCosts] = useState(false);
+
+  //manage pots modal visibility
+  const [showManagePots, setShowManagePots] = useState(false);
 
   //envelope crud: add, edit, delete
   const [showAddEnvelope, setShowAddEnvelope] = useState(false);
@@ -129,10 +134,6 @@ export default function Dashboard() {
   }, []);
 
 
-
-  const totalBalance = accounts
-    .filter((acc) => acc.include_in_budget)
-    .reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
 
   const viewMonthLabel = viewDate.toLocaleString("default", { month: "long", year: "numeric" });
 
@@ -632,6 +633,25 @@ export default function Dashboard() {
   }
 
 
+  //updates a pot's target amount and deadline (monthly_contribution auto-recalcs on backend)
+  async function handleEditPotGoal(pot, newTarget, newDeadline) {
+    try {
+      const res = await fetch(`${API}/accounts/${pot.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          target_amount: newTarget,
+          deadline: newDeadline || null,
+        }),
+      });
+      const updated = await res.json();
+      setAccounts((prev) => prev.map((a) => a.id === pot.id ? updated : a));
+    } catch (err) {
+      console.error("Failed to update pot goal:", err);
+    }
+  }
+
+
   async function handleDeleteTransaction(tx) {
     try {
       await fetch(`${API}/transactions/${tx.id}`, { method: "DELETE" });
@@ -727,6 +747,16 @@ export default function Dashboard() {
             onEdit={handleEditCost}
             onDelete={handleDeleteCost}
             onClose={() => setShowManageCosts(false)}
+          />
+        )}
+
+
+        {/* Manage Pots (edit goal target + deadline) */}
+        {showManagePots && (
+          <ManagePotsModal
+            accounts={accounts}
+            onEdit={handleEditPotGoal}
+            onClose={() => setShowManagePots(false)}
           />
         )}
 
@@ -890,14 +920,23 @@ export default function Dashboard() {
           {/* Right */}
           <div className="flex flex-col gap-4">
 
-            {/* Accounts Summary */}
+            {/* Accounts Summary (bank) */}
             <AccountsSummary
               accounts={accounts}
-              totalBalance={totalBalance}
               openAccountLogs={openAccountLogs}
               onToggle={toggleAccountLog}
               getAccountTransfers={getAccountTransfers}
               getAccountName={getAccountName}
+            />
+
+            {/* Pots Summary */}
+            <PotsSummary
+              accounts={accounts}
+              openAccountLogs={openAccountLogs}
+              onToggle={toggleAccountLog}
+              getAccountTransfers={getAccountTransfers}
+              getAccountName={getAccountName}
+              onManage={() => setShowManagePots(true)}
             />
 
             {/* Monthly Costs + Shifts */}
