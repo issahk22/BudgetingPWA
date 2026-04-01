@@ -282,10 +282,10 @@ def update_envelope(envelope_id: str, updates: EnvelopeUpdate, db: Session = Dep
     if updates.envelope_name is not None:
         envelope.envelope_name = updates.envelope_name
     if updates.allocated_amount is not None:
+        #apply the budget change (difference) as a delta to balance so "remaining to spend" stays consistent
+        delta = updates.allocated_amount - envelope.allocated_amount
         envelope.allocated_amount = updates.allocated_amount
-        #if new allocation is lower than current balance reduce balance to new allocated amount 
-        if envelope.balance > updates.allocated_amount:
-            envelope.balance = updates.allocated_amount
+        envelope.balance = envelope.balance + delta
 
     db.commit()
     db.refresh(envelope)
