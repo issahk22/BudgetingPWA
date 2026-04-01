@@ -21,6 +21,17 @@ export default function AccountsSummary({ accounts, totalBalance, openAccountLog
                 >
                   <span className="text-sm text-text">
                     {acc.account_name} <span className="text-xs text-muted">({acc.account_type})</span>
+                    {acc.account_type === "pot" && acc.target_amount && (
+                      <span className="block text-xs text-muted mt-0.5">
+                        Goal: £{parseFloat(acc.balance).toFixed(2)} / £{parseFloat(acc.target_amount).toFixed(2)}
+                        {acc.monthly_contribution && (
+                          <span className="ml-2 text-accent">· £{parseFloat(acc.monthly_contribution).toFixed(2)}/mo</span>
+                        )}
+                        {acc.deadline && (
+                          <span className="ml-1">· by {acc.deadline}</span>
+                        )}
+                      </span>
+                    )}
                   </span>
                   <span className="text-sm text-text font-medium">
                     £{parseFloat(acc.balance).toFixed(2)} <span className="text-xs text-muted">{isOpen ? "▲" : "▼"}</span>

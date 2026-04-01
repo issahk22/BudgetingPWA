@@ -2,7 +2,7 @@
 
 export default function AllocationsModal({
   accounts, envelopes, fixedCosts, allocations, setAllocations,
-  savingsInputs, setSavingsInputs, recommendations,
+  savingsInputs, setSavingsInputs, recommendations, lastMonthSpend,
   savingAllocations, onSubmit,
 }) {
   const primaryAccount = accounts.find((a) => a.include_in_budget);
@@ -54,7 +54,12 @@ export default function AllocationsModal({
 
           {envelopes.map((env) => (
             <div key={env.id} className="flex items-center gap-2">
-              <span className="flex-1 text-sm text-text">{env.envelope_name}</span>
+              <div className="flex-1">
+                <span className="text-sm text-text">{env.envelope_name}</span>
+                {lastMonthSpend?.[env.envelope_name] !== undefined && (
+                  <p className="text-xs text-muted">Last month: £{lastMonthSpend[env.envelope_name].toFixed(2)}</p>
+                )}
+              </div>
               <input
                 type="number" min="0" step="0.01"
                 value={allocations[env.id] ?? ""}

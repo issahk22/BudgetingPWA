@@ -120,6 +120,14 @@ export default function Envelopes() {
         });
       }
 
+      // record opening balance snapshot for the current month
+      const now = new Date();
+      await fetch(`${API}/month-open-snapshot`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month: now.getMonth() + 1, year: now.getFullYear() }),
+      });
+
       router.push("/dashboard");
 
     } catch (err) {

@@ -1,3 +1,4 @@
+import math
 from sqlalchemy.orm import Session
 from datetime import date
 from database import SessionLocal as LiveSession
@@ -133,13 +134,24 @@ def calculate_summaries(data: dict, month: int, year: int, net_income: float) ->
         amount_at_month_end = float(pot.balance)
         target              = float(pot.target_amount)
 
-        #ontrack: deadline has not yet passed, or goal has already been met
-        if pot.deadline:
-            deadline    = date.fromisoformat(pot.deadline)
-            today       = date.today()
-            on_track    = amount_at_month_end >= target or deadline >= today
+        # on_track: compare the £/month needed *from now* against the rate
+        # committed to at creation (stored in pot.monthly_contribution).
+        # if we'd now need to save more than originally planned, we're behind.
+        if amount_at_month_end >= target:
+            on_track = True  # goal already met
+        elif pot.deadline:
+            deadline = date.fromisoformat(pot.deadline)
+            today    = date.today()
+            if deadline < today:
+                on_track = False  # deadline passed without hitting target
+            elif pot.monthly_contribution:
+                months_left  = max(1, (deadline.year - today.year) * 12 + (deadline.month - today.month))
+                needed_now   = math.ceil((target - amount_at_month_end) / months_left)
+                on_track     = needed_now <= float(pot.monthly_contribution)
+            else:
+                on_track = True  # no baseline contribution stored — can't tell
         else:
-            on_track = True
+            on_track = True  # no deadline set
 
         goal_summaries.append({
             "goal_id":            pot.id,

@@ -55,6 +55,7 @@ class AccountResponse(BaseModel):
     include_in_budget: bool
     target_amount: Decimal | None
     deadline: str | None
+    monthly_contribution: Decimal | None
     class Config:
         from_attributes = True
 

@@ -24,7 +24,7 @@ export default function ShiftForm({ shiftForm, setShiftForm, jobs, shiftTypes, s
       </label>
 
       <label className="flex flex-col gap-1 text-sm text-muted">
-        Hours Worked
+        Paid Hours Worked
         <input type="number" required min="0.5" step="0.5" value={shiftForm.hours_worked} onChange={(e) => setShiftForm({ ...shiftForm, hours_worked: e.target.value })}
           className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
       </label>

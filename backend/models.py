@@ -27,6 +27,8 @@ class Account(Base):
     #pots can optionally have a savings goal attached (target amount + deadline)
     target_amount = Column(Numeric(12, 2), nullable=True)
     deadline = Column(String, nullable=True)
+    # required monthly save to hit target by deadline (ceil'd for a pessimistic estimate)
+    monthly_contribution = Column(Numeric(12, 2), nullable=True)
 
 
 class FixedCost(Base):

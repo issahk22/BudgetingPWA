@@ -169,8 +169,8 @@ export default function History() {
                             <span className="text-text">{money(m.accounts_closing_balance)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-muted">Shift income (gross)</span>
-                            <span className="text-text">{money(m.shift_calculated_income)}</span>
+                            <span className="text-muted">Predicted Shift income (gross)</span>
+                            <span className="text-text">~ {money(m.shift_calculated_income)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted">Actual net income</span>

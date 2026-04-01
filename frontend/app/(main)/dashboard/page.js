@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [savingsInputs, setSavingsInputs] = useState({});
   const [recommendations, setRecommendations] = useState(null);
   const [savingAllocations, setSavingAllocations] = useState(false);
+  const [lastMonthSpend, setLastMonthSpend] = useState({});
 
   //manage monthly costs modal visibility
   const [showManageCosts, setShowManageCosts] = useState(false);
@@ -500,6 +501,22 @@ export default function Dashboard() {
         setRecommendations(null);
       }
 
+      // fetch last month's envelope spend for display in allocations modal
+      try {
+        const monthsRes = await fetch(`${API}/history/months`);
+        const months = await monthsRes.json();
+        if (months.length > 0) {
+          const latest = months[months.length - 1];
+          const envHistRes = await fetch(`${API}/history/envelopes/${latest.year}/${latest.month}`);
+          const envHist = await envHistRes.json();
+          const spendMap = {};
+          envHist.forEach((e) => { spendMap[e.envelope_name] = parseFloat(e.actual_spent); });
+          setLastMonthSpend(spendMap);
+        }
+      } catch {
+        setLastMonthSpend({});
+      }
+
       setShowAllocations(true);
     } catch (err) {
       console.error("Failed to close month:", err);
@@ -732,6 +749,7 @@ export default function Dashboard() {
             allocations={allocations} setAllocations={setAllocations}
             savingsInputs={savingsInputs} setSavingsInputs={setSavingsInputs}
             recommendations={recommendations}
+            lastMonthSpend={lastMonthSpend}
             savingAllocations={savingAllocations}
             onSubmit={handleSaveAllocations}
           />
@@ -829,7 +847,7 @@ export default function Dashboard() {
 
               //amount left to budget = Account balance - (remaining balances in envelope + unpaid fixed costs total)
               const totalEnvelopeBalance = envelopes.reduce((sum, e) => sum + parseFloat(e.balance), 0);
-              const leftToBudget = accBal - unpaidFixedTotal - totalEnvelopeBalance;
+              const leftToBudget = Math.round((accBal - unpaidFixedTotal - totalEnvelopeBalance) * 100) / 100;
               return (
                 <div className="bg-gray-800 rounded-lg px-4 py-2 mb-4 flex justify-between items-center text-sm">
                   <span className="text-muted">Amount left to budget</span>
@@ -883,7 +901,7 @@ export default function Dashboard() {
             />
 
             {/* Monthly Costs + Shifts */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 items-start">
 
               <MonthlyCosts fixedCosts={fixedCosts} onPaidToggle={handlePaidToggle} onManage={() => setShowManageCosts(true)} />
 

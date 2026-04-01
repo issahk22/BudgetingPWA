@@ -1,5 +1,6 @@
-import sys, os
+import sys, os, math
 import bcrypt
+from datetime import date
 sys.path.append(os.path.join(os.path.dirname(__file__), "counterfactual"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "envelope_optimisation"))
 
@@ -111,11 +112,27 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
 ##-----Account Routes-----##
 
+
+def _calc_monthly_contribution(target_amount, deadline_str):
+    """required £/month to hit target by deadline, ceil'd for a pessimistic estimate."""
+    if target_amount is None or not deadline_str:
+        return None
+    try:
+        deadline = date.fromisoformat(deadline_str)
+    except ValueError:
+        return None
+    today = date.today()
+    months_left = max(1, (deadline.year - today.year) * 12 + (deadline.month - today.month))
+    return math.ceil(float(target_amount) / months_left)
+
+
 @app.post("/accounts", response_model=AccountResponse)
 
 def create_account(account: AccountCreate, db: Session = Depends(get_db)):
 
-    new_account = Account(**account.model_dump())
+    data = account.model_dump()
+    data["monthly_contribution"] = _calc_monthly_contribution(data.get("target_amount"), data.get("deadline"))
+    new_account = Account(**data)
     db.add(new_account)
     db.commit()
     db.refresh(new_account)
@@ -153,6 +170,10 @@ def update_account(account_id: str, updates: AccountUpdate, db: Session = Depend
         account.target_amount = updates.target_amount
     if updates.deadline is not None:
         account.deadline = updates.deadline
+
+    # if either goal field changed, recalculate required monthly contribution
+    if updates.target_amount is not None or updates.deadline is not None:
+        account.monthly_contribution = _calc_monthly_contribution(account.target_amount, account.deadline)
 
     db.commit()
     db.refresh(account)
