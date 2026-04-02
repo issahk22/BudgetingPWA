@@ -83,46 +83,51 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
 
+  async function loadAllData() {
+    const [accountsRes, envelopesRes, fixedCostsRes, transfersRes, jobsRes, shiftsRes, shiftTypesRes] = await Promise.all([
+      fetch(`${API}/accounts`),
+      fetch(`${API}/envelopes`),
+      fetch(`${API}/fixed-costs`),
+      fetch(`${API}/transfers`),
+      fetch(`${API}/jobs`),
+      fetch(`${API}/shifts`),
+      fetch(`${API}/shift-types`),
+    ]);
+
+    const accountsData = await accountsRes.json();
+    const envelopesData = await envelopesRes.json();
+    const fixedCostsData = await fixedCostsRes.json();
+    const transfersData = await transfersRes.json();
+    const jobsData = await jobsRes.json();
+    const shiftsData = await shiftsRes.json();
+    const shiftTypesData = await shiftTypesRes.json();
+
+    setAccounts(accountsData);
+    setEnvelopes(envelopesData);
+    setFixedCosts(fixedCostsData);
+    setTransfers(transfersData);
+    setJobs(jobsData);
+    setShifts(shiftsData);
+    setShiftTypes(shiftTypesData);
+
+    if (envelopesData.length > 0) {
+      const txResults = await Promise.all(
+        envelopesData.map((env) =>
+          fetch(`${API}/transactions/envelope/${env.id}`).then((r) => r.json())
+        )
+      );
+      const txMap = {};
+      envelopesData.forEach((env, i) => { txMap[env.id] = txResults[i]; });
+      setTransactions(txMap);
+    } else {
+      setTransactions({});
+    }
+  }
+
   useEffect(() => {
     async function fetchData() {
       try {
-        const [accountsRes, envelopesRes, fixedCostsRes, transfersRes, jobsRes, shiftsRes, shiftTypesRes] = await Promise.all([
-          fetch(`${API}/accounts`),
-          fetch(`${API}/envelopes`),
-          fetch(`${API}/fixed-costs`),
-          fetch(`${API}/transfers`),
-          fetch(`${API}/jobs`),
-          fetch(`${API}/shifts`),
-          fetch(`${API}/shift-types`),
-        ]);
-
-        const accountsData = await accountsRes.json();
-        const envelopesData = await envelopesRes.json();
-        const fixedCostsData = await fixedCostsRes.json();
-        const transfersData = await transfersRes.json();
-        const jobsData = await jobsRes.json();
-        const shiftsData = await shiftsRes.json();
-        const shiftTypesData = await shiftTypesRes.json();
-
-        setAccounts(accountsData);
-        setEnvelopes(envelopesData);
-        setFixedCosts(fixedCostsData);
-        setTransfers(transfersData);
-        setJobs(jobsData);
-        setShifts(shiftsData);
-        setShiftTypes(shiftTypesData);
-
-        if (envelopesData.length > 0) {
-          const txResults = await Promise.all(
-            envelopesData.map((env) =>
-              fetch(`${API}/transactions/envelope/${env.id}`).then((r) => r.json())
-            )
-          );
-          const txMap = {};
-          envelopesData.forEach((env, i) => { txMap[env.id] = txResults[i]; });
-          setTransactions(txMap);
-        }
-
+        await loadAllData();
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
       } finally {
@@ -571,7 +576,8 @@ export default function Dashboard() {
       }
 
       setShowAllocations(false);
-      window.location.reload();
+      await loadAllData();
+      setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)); //moves month forward 
     } catch (err) {
       console.error("Failed to save allocations:", err);
     } finally {
