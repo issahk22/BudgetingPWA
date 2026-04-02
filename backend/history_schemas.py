@@ -39,6 +39,7 @@ class MonthSummaryResponse(BaseModel):
 class EnvelopeHistoryCreate(BaseModel):
     month: int
     year: int
+    envelope_id: str
     envelope_name: str
     allocated_amount: Decimal
     actual_spent: Decimal
@@ -48,6 +49,7 @@ class EnvelopeHistoryCreate(BaseModel):
 class EnvelopeHistoryResponse(BaseModel):
     month: int
     year: int
+    envelope_id: str
     envelope_name: str
     allocated_amount: Decimal
     actual_spent: Decimal

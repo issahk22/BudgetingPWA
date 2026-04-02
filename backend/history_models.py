@@ -24,7 +24,8 @@ class EnvelopeHistory(Base):
 
     month = Column(Integer, primary_key=True, nullable=False)
     year = Column(Integer, primary_key=True, nullable=False)
-    envelope_name = Column(String, primary_key=True, nullable=False)
+    envelope_id = Column(String, primary_key=True, nullable=False)
+    envelope_name = Column(String, nullable=False) 
     allocated_amount = Column(Numeric(12, 2), nullable=False)
     actual_spent = Column(Numeric(12, 2), nullable=False)
     difference = Column(Numeric(12, 2), nullable=False)

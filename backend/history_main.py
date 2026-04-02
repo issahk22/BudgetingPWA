@@ -73,7 +73,7 @@ def create_envelope_history(envelope: EnvelopeHistoryCreate, db: Session = Depen
     existing = db.query(EnvelopeHistory).filter( #composite primary key
         EnvelopeHistory.month == envelope.month,
         EnvelopeHistory.year == envelope.year,
-        EnvelopeHistory.envelope_name == envelope.envelope_name
+        EnvelopeHistory.envelope_id == envelope.envelope_id
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Envelope history for this month already exists")

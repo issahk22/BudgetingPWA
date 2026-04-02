@@ -94,6 +94,7 @@ def calculate_summaries(data: dict, month: int, year: int, net_income: float) ->
         overspent    = actual_spent > float(e.allocated_amount)
 
         envelope_summaries.append ({
+            "envelope_id":      e.id,
             "envelope_name":    e.envelope_name,
             "allocated_amount": float(e.allocated_amount),
             "actual_spent":     actual_spent,
@@ -209,6 +210,7 @@ def write_to_history(history_db: Session, summaries: dict, month: int, year: int
             history_db.add(EnvelopeHistory(
                 month            = month,
                 year             = year,
+                envelope_id      = e["envelope_id"],
                 envelope_name    = e["envelope_name"],
                 allocated_amount = e["allocated_amount"],
                 actual_spent     = e["actual_spent"],
