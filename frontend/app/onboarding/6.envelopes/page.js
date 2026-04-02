@@ -108,7 +108,10 @@ export default function Envelopes() {
         await fetch(`${API}/shift-types`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type_name: type }),
+          body: JSON.stringify({
+            type_name: type.type_name,
+            rate_multiplier: parseFloat(type.rate_multiplier) || 1.0,
+          }),
         });
       }
 

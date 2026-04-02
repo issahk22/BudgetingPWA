@@ -1,5 +1,6 @@
 import sys, os, math
 import bcrypt
+from decimal import Decimal
 from datetime import date
 sys.path.append(os.path.join(os.path.dirname(__file__), "counterfactual"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "envelope_optimisation"))
@@ -544,15 +545,21 @@ def create_shift(shift: ShiftCreate, db: Session = Depends(get_db)):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    #calculates total pay in backend from user data 
-    total_pay = shift.hours_worked * job.base_hourly_rate * shift.rate_multiplier
+    #auto-fill multiplier from shift type if not provided
+    multiplier = shift.rate_multiplier
+    if multiplier is None:
+        shift_type_row = db.query(ShiftType).filter(ShiftType.type_name == shift.shift_type).first()
+        multiplier = shift_type_row.rate_multiplier if shift_type_row else Decimal("1.000")
+
+    #calculates total pay in backend from user data
+    total_pay = shift.hours_worked * job.base_hourly_rate * multiplier
 
     new_shift = Shift(
         job_id=shift.job_id,
         date=shift.date,
         hours_worked=shift.hours_worked,
         shift_type=shift.shift_type,
-        rate_multiplier=shift.rate_multiplier,
+        rate_multiplier=multiplier,
         total_pay=total_pay
     )
     db.add(new_shift)
@@ -569,7 +576,10 @@ def create_shift_type(shift_type: ShiftTypeCreate, db: Session = Depends(get_db)
     existing = db.query(ShiftType).filter(ShiftType.type_name == shift_type.type_name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Shift type already exists")
-    new_type = ShiftType(type_name=shift_type.type_name)
+    new_type = ShiftType(
+        type_name=shift_type.type_name,
+        rate_multiplier=shift_type.rate_multiplier,
+    )
     db.add(new_type)
     db.commit()
     db.refresh(new_type)

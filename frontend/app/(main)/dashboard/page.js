@@ -415,7 +415,7 @@ export default function Dashboard() {
           date: shiftForm.date || null,
           hours_worked: parseFloat(shiftForm.hours_worked),
           shift_type: shiftForm.shift_type,
-          rate_multiplier: shiftForm.rate_multiplier ? parseFloat(shiftForm.rate_multiplier) : 1.0,
+          rate_multiplier: shiftForm.rate_multiplier ? parseFloat(shiftForm.rate_multiplier) : null,
         }),
       });
 

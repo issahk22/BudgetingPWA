@@ -15,6 +15,7 @@ export default function Employment() {
   const [editingType, setEditingType] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [newType, setNewType] = useState("");
+  const [newMultiplier, setNewMultiplier] = useState("1.000");
 
 
   function addJob() {
@@ -33,9 +34,10 @@ export default function Employment() {
   function addShiftType() {
     const formatted = newType.trim().toLowerCase().replace(/\s+/g, "_");
     if (!formatted || data.shiftTypes.length >= MAX_SHIFT_TYPES) return;
-    if (data.shiftTypes.includes(formatted)) return;
-    update({ shiftTypes: [...data.shiftTypes, formatted] });
+    if (data.shiftTypes.some((t) => t.type_name === formatted)) return;
+    update({ shiftTypes: [...data.shiftTypes, { type_name: formatted, rate_multiplier: newMultiplier || "1.000" }] });
     setNewType("");
+    setNewMultiplier("1.000");
   }
 
   function removeShiftType(i) {
@@ -44,17 +46,23 @@ export default function Employment() {
 
   function startEditType(i) {
     setEditingType(i);
-    setEditValue(data.shiftTypes[i].replace(/_/g, " "));
+    setEditValue(data.shiftTypes[i].type_name.replace(/_/g, " "));
   }
 
   function saveEditType(i) {
     const formatted = editValue.trim().toLowerCase().replace(/\s+/g, "_");
     if (!formatted) return;
     const updated = [...data.shiftTypes];
-    updated[i] = formatted;
+    updated[i] = { ...updated[i], type_name: formatted };
     update({ shiftTypes: updated });
     setEditingType(null);
     setEditValue("");
+  }
+
+  function updateMultiplier(i, value) {
+    const updated = [...data.shiftTypes];
+    updated[i] = { ...updated[i], rate_multiplier: value };
+    update({ shiftTypes: updated });
   }
 
   return (
@@ -103,11 +111,11 @@ export default function Employment() {
 
         {/* Shift Types */}
         <h2 className="text-lg font-semibold mt-6 mb-3">Shift Types</h2>
-        <p className="text-xs mb-2">Max {MAX_SHIFT_TYPES} types. Click a type to edit it.</p>
+        <p className="text-xs mb-2">Max {MAX_SHIFT_TYPES} types. Click a name to edit it.</p>
 
-        <div className="flex flex-wrap gap-2 mb-3">
+        <div className="flex flex-col gap-2 mb-3">
           {data.shiftTypes.map((type, i) => (
-            <div key={i} className="pill flex items-center gap-1">
+            <div key={i} className="flex items-center gap-2 bg-[#262626] rounded-lg px-3 py-2">
               {editingType === i ? (
                 <input
                   type="text"
@@ -116,15 +124,25 @@ export default function Employment() {
                   onBlur={() => saveEditType(i)}
                   onKeyDown={(e) => e.key === "Enter" && saveEditType(i)}
                   autoFocus
+                  className="flex-1 rounded px-2 py-1 text-sm"
                 />
               ) : (
                 <span
-                  className="text-sm cursor-pointer"
+                  className="flex-1 text-sm cursor-pointer text-text"
                   onClick={() => startEditType(i)}
                 >
-                  {type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  {type.type_name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                 </span>
               )}
+              <span className="text-xs text-muted">×</span>
+              <input
+                type="number"
+                min="0.5"
+                step="0.05"
+                value={type.rate_multiplier}
+                onChange={(e) => updateMultiplier(i, e.target.value)}
+                className="w-20 rounded px-2 py-1 text-sm text-center"
+              />
               <button onClick={() => removeShiftType(i)} className="pill-remove">✕</button>
             </div>
           ))}
@@ -140,6 +158,15 @@ export default function Employment() {
               onChange={(e) => setNewType(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addShiftType()}
               className="flex-1 rounded px-3 py-2 text-sm"
+            />
+            <input
+              type="number"
+              min="0.5"
+              step="0.05"
+              placeholder="×1.000"
+              value={newMultiplier}
+              onChange={(e) => setNewMultiplier(e.target.value)}
+              className="w-24 rounded px-3 py-2 text-sm text-center"
             />
             <button
               onClick={addShiftType}

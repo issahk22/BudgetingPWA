@@ -196,7 +196,7 @@ class ShiftCreate(BaseModel):
     date: str
     hours_worked: Decimal
     shift_type: str
-    rate_multiplier: Decimal = Decimal("1.00")
+    rate_multiplier: Decimal | None = None  # auto-fills from shift type if not provided
 
 class ShiftUpdate(BaseModel):
     date: str | None = None
@@ -221,10 +221,12 @@ class ShiftResponse(BaseModel):
 
 class ShiftTypeCreate(BaseModel):
     type_name: str
+    rate_multiplier: Decimal = Decimal("1.000")
 
 class ShiftTypeResponse(BaseModel):
     id: str
     type_name: str
+    rate_multiplier: Decimal
     class Config:
         from_attributes = True
 

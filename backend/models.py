@@ -92,6 +92,7 @@ class ShiftType(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     type_name = Column(String, nullable=False, unique=True)
+    rate_multiplier = Column(Numeric(4, 3), nullable=False, default=1.000)
 
 
 class Shift(Base):

@@ -31,18 +31,28 @@ export default function ShiftForm({ shiftForm, setShiftForm, jobs, shiftTypes, s
 
       <label className="flex flex-col gap-1 text-sm text-muted">
         Shift Type
-        <select required value={shiftForm.shift_type} onChange={(e) => setShiftForm({ ...shiftForm, shift_type: e.target.value })}
+        <select required value={shiftForm.shift_type} onChange={(e) => {
+          const selected = shiftTypes.find((t) => t.type_name === e.target.value);
+          setShiftForm({
+            ...shiftForm,
+            shift_type: e.target.value,
+            rate_multiplier: selected ? parseFloat(selected.rate_multiplier).toFixed(3) : "",
+          });
+        }}
           className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent">
           <option value="">Select shift type</option>
           {shiftTypes.map((t) => (
-            <option key={t.id} value={t.type_name}>{t.type_name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+            <option key={t.id} value={t.type_name}>
+              {t.type_name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+              {parseFloat(t.rate_multiplier) !== 1 ? ` (×${parseFloat(t.rate_multiplier).toFixed(2)})` : ""}
+            </option>
           ))}
         </select>
       </label>
 
       <label className="flex flex-col gap-1 text-sm text-muted">
-        Rate Multiplier (optional)
-        <input type="number" min="1" step="0.05" placeholder="e.g. 1.5" value={shiftForm.rate_multiplier} onChange={(e) => setShiftForm({ ...shiftForm, rate_multiplier: e.target.value })}
+        Rate Multiplier
+        <input type="number" min="0.5" step="0.05" placeholder="e.g. 1.5" value={shiftForm.rate_multiplier} onChange={(e) => setShiftForm({ ...shiftForm, rate_multiplier: e.target.value })}
           className="w-full px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
       </label>
 
