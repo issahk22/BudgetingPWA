@@ -20,6 +20,7 @@ export default function Employment() {
 
   function addJob() {
     if (!input.job_name || !input.base_hourly_rate) return;
+    if (data.jobs.length >= 1) return; // PROTOTYPE RESTRICTION: max 1 job
     update({ jobs: [...data.jobs, input] });
     setInput({ job_name: "", base_hourly_rate: "" });
   }
@@ -71,42 +72,43 @@ export default function Employment() {
 
         <h1 className="text-2xl font-semibold mb-6">Employment</h1>
 
-        <div className="flex gap-2 mb-3">
-
-          <input
-            type="text"
-            placeholder="e.g. Nurse"
-            maxLength={30}
-            value={input.job_name}
-            onChange={(e) => setInput({ ...input, job_name: e.target.value })}
-            className="flex-1 rounded px-3 py-2 text-sm"
-          />
-
-          <input
-            type="number"
-            placeholder=" Base hourly rate (£)"
-            min="0"
-            step="0.01"
-            value={input.base_hourly_rate}
-            onChange={(e) => setInput({ ...input, base_hourly_rate: e.target.value })}
-            className="w-36 rounded px-3 py-2 text-sm"
-          />
-
-        </div>
-
-        <button
-          onClick={addJob}
-          className="btn-outline w-full mb-4"
-        >
-          Add Job
-        </button>
-
-        {data.jobs.map((job, i) => (
-          <div key={i} className="list-item flex justify-between items-center text-sm py-1">
-            <span>{job.job_name}: £{parseFloat(job.base_hourly_rate).toFixed(2)}/hr</span>
-            <button onClick={() => removeJob(i)} className="btn-remove">Remove</button>
-          </div>
-        ))}
+        
+        {data.jobs.length === 0 ? (
+          <>
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                placeholder="e.g. Nurse"
+                maxLength={30}
+                value={input.job_name}
+                onChange={(e) => setInput({ ...input, job_name: e.target.value })}
+                className="flex-1 rounded px-3 py-2 text-sm"
+              />
+              <input
+                type="number"
+                placeholder=" Base hourly rate (£)"
+                min="0"
+                step="0.01"
+                value={input.base_hourly_rate}
+                onChange={(e) => setInput({ ...input, base_hourly_rate: e.target.value })}
+                className="w-36 rounded px-3 py-2 text-sm"
+              />
+            </div>
+            <button
+              onClick={addJob}
+              className="btn-outline w-full mb-4"
+            >
+              Add Job
+            </button>
+          </>
+        ) : (
+          data.jobs.map((job, i) => (
+            <div key={i} className="list-item flex justify-between items-center text-sm py-1">
+              <span>{job.job_name}: £{parseFloat(job.base_hourly_rate).toFixed(2)}/hr</span>
+              <button onClick={() => removeJob(i)} className="btn-remove">Remove</button>
+            </div>
+          ))
+        )}
 
 
         {/* Shift Types */}
@@ -177,10 +179,11 @@ export default function Employment() {
           </div>
         )}
 
-
+        
         <button
-          onClick={() => router.push("/onboarding/4.accounts")}
-          className="btn-primary w-full mt-6"
+          onClick={() => data.jobs.length >= 1 && router.push("/onboarding/4.accounts")}
+          disabled={data.jobs.length === 0}
+          className="btn-primary w-full mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Next
         </button>

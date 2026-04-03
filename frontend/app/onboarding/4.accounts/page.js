@@ -8,29 +8,36 @@ export default function Accounts() {
   const router = useRouter();
   const { data, update } = useOnboarding();
 
-  const [input, setInput] = useState({ name: "", balance: "", type: "bank", target_amount: "", deadline: "" });
+  const [bankInput, setBankInput] = useState({ name: "", balance: "" });
+  const [potInput, setPotInput] = useState({ name: "", balance: "", target_amount: "", deadline: "" });
+
+  const banks = data.accounts.filter((a) => a.type === "bank");
+  const pots  = data.accounts.filter((a) => a.type === "pot");
 
 
-  function addAccount() {
-    if (!input.name) return;
+  function addBank() {
+    if (!bankInput.name || !bankInput.balance) return;
+    if (banks.length >= 1) return; // prototype: max 1 bank account
     update({
       accounts: [
         ...data.accounts,
-        {
-          name: input.name,
-          balance: input.balance,
-          type: input.type,
-          // pots are excluded from budget by default
-          include_in_budget: input.type === "bank",
-          //optional savings goal fields (only pots)
-          target_amount: input.type === "pot" ? input.target_amount : "",
-          deadline: input.type === "pot" ? input.deadline : "",
-        },
+        { name: bankInput.name, balance: bankInput.balance, type: "bank", include_in_budget: true, target_amount: "", deadline: "" },
       ],
     });
-    setInput({ name: "", balance: "", type: "bank", target_amount: "", deadline: "" });
+    setBankInput({ name: "", balance: "" });
   }
 
+  function addPot() {
+    if (!potInput.name || !potInput.balance || !potInput.target_amount || !potInput.deadline) return;
+    if (pots.length >= 1) return; //PROTOTYPE RESTRICTION: max 1 pot
+    update({
+      accounts: [
+        ...data.accounts,
+        { name: potInput.name, balance: potInput.balance, type: "pot", include_in_budget: false, target_amount: potInput.target_amount, deadline: potInput.deadline },
+      ],
+    });
+    setPotInput({ name: "", balance: "", target_amount: "", deadline: "" });
+  }
 
   function removeAccount(i) {
     update({ accounts: data.accounts.filter((_, idx) => idx !== i) });
@@ -40,90 +47,123 @@ export default function Accounts() {
   return (
     <div className="ob-card">
 
-        <h1 className="text-2xl font-semibold mb-6">Accounts</h1>
+      <h1 className="text-2xl font-semibold mb-6">Accounts</h1>
 
-        <div className="flex gap-2 mb-2">
+      {/* ── Bank Account ── */}
+      <h2 className="text-lg font-semibold mb-1">Bank Account</h2>
+      <p className="text-s text-muted mb-3">Main bank accounts included in budget </p>
 
-          <input
-            type="text"
-            placeholder="Account name"
-            maxLength={30}
-            value={input.name}
-            onChange={(e) => setInput({ ...input, name: e.target.value })}
-            className="flex-1 rounded px-3 py-2 text-sm"
-          />
+      {banks.length === 0 ? (
+        <>
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              placeholder="Account name"
+              maxLength={30}
+              value={bankInput.name}
+              onChange={(e) => setBankInput({ ...bankInput, name: e.target.value })}
+              className="flex-1 rounded px-3 py-2 text-sm"
+            />
+            <input
+              type="number"
+              placeholder="Balance (£)"
+              min="0"
+              step="0.01"
+              value={bankInput.balance}
+              onChange={(e) => setBankInput({ ...bankInput, balance: e.target.value })}
+              className="w-28 rounded px-3 py-2 text-sm"
+            />
+          </div>
+          <button onClick={addBank} className="btn-outline w-full mb-6">
+            Add Bank Account
+          </button>
+        </>
+      ) : (
+        banks.map((acc, i) => {
+          const globalIdx = data.accounts.indexOf(acc);
+          return (
+            <div key={i} className="list-item flex justify-between items-center text-sm py-2 gap-4 mb-6">
+              <span className="flex-1">{acc.name}: £{parseFloat(acc.balance).toFixed(2)}</span>
+              <button onClick={() => removeAccount(globalIdx)} className="btn-remove">Remove</button>
+            </div>
+          );
+        })
+      )}
 
-          <input
-            type="number"
-            placeholder="Balance (£)"
-            min="0"
-            step="0.01"
-            value={input.balance}
-            onChange={(e) => setInput({ ...input, balance: e.target.value })}
-            className="w-28 rounded px-3 py-2 text-sm"
-          />
 
-          <select
-            value={input.type}
-            onChange={(e) => setInput({ ...input, type: e.target.value })}
-            className="rounded px-3 py-2 text-sm"
-          >
-            <option value="bank">Bank</option>
-            <option value="pot">Pot</option>
-          </select>
+      {/* ── Savings Pot ── */}
+      <h2 className="text-lg font-semibold mb-1">Savings Pot</h2>
+      <p className="text-s text-muted mb-3">Savings pot with goal</p>
 
-        </div>
+      {pots.map((acc, i) => {
+        const globalIdx = data.accounts.indexOf(acc);
+        return (
+          <div key={i} className="list-item flex justify-between items-center text-sm py-2 gap-4 mb-1">
+            <span className="flex-1">
+              {acc.name}: £{parseFloat(acc.balance).toFixed(2)}
+              {acc.target_amount && (
+                <span className="text-xs text-muted"> · Goal: £{acc.target_amount}{acc.deadline ? ` by ${acc.deadline}` : ""}</span>
+              )}
+            </span>
+            <button onClick={() => removeAccount(globalIdx)} className="btn-remove">Remove</button>
+          </div>
+        );
+      })}
 
-        {/* extra fields the type is a pot, sets a savings goal for the pot */}
-        {input.type === "pot" && (
+      {pots.length === 0 && (
+        <>
+          <div className="flex gap-2 mb-2 mt-2">
+            <input
+              type="text"
+              placeholder="Pot name"
+              maxLength={30}
+              value={potInput.name}
+              onChange={(e) => setPotInput({ ...potInput, name: e.target.value })}
+              className="flex-1 rounded px-3 py-2 text-sm"
+            />
+            <input
+              type="number"
+              placeholder="Balance (£)"
+              min="0"
+              step="0.01"
+              value={potInput.balance}
+              onChange={(e) => setPotInput({ ...potInput, balance: e.target.value })}
+              className="w-28 rounded px-3 py-2 text-sm"
+            />
+          </div>
           <div className="flex gap-2 mb-2">
             <input
               type="number"
-              placeholder="Target (£)"
+              placeholder="Target (£) *"
               min="0"
               step="0.01"
-              value={input.target_amount}
-              onChange={(e) => setInput({ ...input, target_amount: e.target.value })}
+              required
+              value={potInput.target_amount}
+              onChange={(e) => setPotInput({ ...potInput, target_amount: e.target.value })}
               className="flex-1 rounded px-3 py-2 text-sm"
             />
             <input
               type="date"
-              value={input.deadline}
+              required
+              value={potInput.deadline}
               min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
-              onChange={(e) => setInput({ ...input, deadline: e.target.value })}
+              onChange={(e) => setPotInput({ ...potInput, deadline: e.target.value })}
               className="flex-1 rounded px-3 py-2 text-sm"
             />
           </div>
-        )}
-
-        <button
-          onClick={addAccount}
-          className="btn-outline w-full mb-4"
-        >
-          Add Account
-        </button>
+          <button onClick={addPot} className="btn-outline w-full mb-2">
+            Add Savings Pot
+          </button>
+        </>
+      )}
 
 
-        {/* list of added accounts */}
-        {data.accounts.map((acc, i) => (
-          <div key={i} className="list-item flex justify-between items-center text-sm py-2 gap-4">
-            <span className="flex-1">
-              <span className="type-label">({acc.type})</span> {acc.name}: £{acc.balance}
-              {acc.type === "pot" && acc.target_amount && (
-                <span className="text-xs" style={{ color: "#6b7280" }}>  (Goal: £{acc.target_amount}{acc.deadline ? ` by ${acc.deadline}` : ""} )</span>
-              )}
-            </span>
-            <button onClick={() => removeAccount(i)} className="btn-remove">Remove</button>
-          </div>
-        ))}
-
-
-        <button
-          onClick={() => router.push("/onboarding/5.costs")}
-          className="btn-primary w-full mt-6"
-        >
-          Next
-        </button>
+      <button
+        onClick={() => router.push("/onboarding/5.costs")}
+        className="btn-primary w-full mt-6"
+      >
+        Next
+      </button>
 
     </div>
   );
