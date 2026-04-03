@@ -74,7 +74,7 @@ export default function Dashboard() {
   const [editEnvName, setEditEnvName] = useState("");
   const [editEnvAmount, setEditEnvAmount] = useState("");
 
-  // tracks which month the dashboard is currently viewing (defaults to current month)
+  // tracks which month the dashboard is currently viewing — derived from history on load
   const [viewDate, setViewDate] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -84,7 +84,7 @@ export default function Dashboard() {
 
 
   async function loadAllData() {
-    const [accountsRes, envelopesRes, fixedCostsRes, transfersRes, jobsRes, shiftsRes, shiftTypesRes] = await Promise.all([
+    const [accountsRes, envelopesRes, fixedCostsRes, transfersRes, jobsRes, shiftsRes, shiftTypesRes, histMonthsRes] = await Promise.all([
       fetch(`${API}/accounts`),
       fetch(`${API}/envelopes`),
       fetch(`${API}/fixed-costs`),
@@ -92,6 +92,7 @@ export default function Dashboard() {
       fetch(`${API}/jobs`),
       fetch(`${API}/shifts`),
       fetch(`${API}/shift-types`),
+      fetch(`${API}/history/months`),
     ]);
 
     const accountsData = await accountsRes.json();
@@ -101,6 +102,7 @@ export default function Dashboard() {
     const jobsData = await jobsRes.json();
     const shiftsData = await shiftsRes.json();
     const shiftTypesData = await shiftTypesRes.json();
+    const histMonths = await histMonthsRes.json();
 
     setAccounts(accountsData);
     setEnvelopes(envelopesData);
@@ -109,6 +111,13 @@ export default function Dashboard() {
     setJobs(jobsData);
     setShifts(shiftsData);
     setShiftTypes(shiftTypesData);
+
+    // set dashboard month to the month after the latest closed month (falls back to real current month)
+    if (histMonths.length > 0) {
+      const latest = histMonths[histMonths.length - 1];
+      // latest.month is 1-based; JS Date month is 0-based, so passing latest.month directly = next month
+      setViewDate(new Date(latest.year, latest.month, 1));
+    }
 
     if (envelopesData.length > 0) {
       const txResults = await Promise.all(
@@ -141,26 +150,6 @@ export default function Dashboard() {
 
 
   const viewMonthLabel = viewDate.toLocaleString("default", { month: "long", year: "numeric" });
-
-  //If there is at least 1 month history, a back button will appear
-  const hasHistory = shifts.some((s) => s.date && new Date(s.date) < viewDate) ||
-    Object.values(transactions).flat().some((tx) => tx.date && new Date(tx.date) < viewDate);
-
-  // hides the forward arrow when already on the current month
-  const isCurrentMonth = (() => {
-    const now = new Date();
-    return viewDate.getMonth() === now.getMonth() && viewDate.getFullYear() === now.getFullYear();
-  })();
-
-  // navigate back one month
-  function goBack() {
-    setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-  }
-
-  // navigate forward one month (only shown when not on current month)
-  function goForward() {
-    setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-  }
 
 
   async function handlePaidToggle(cost) {
@@ -468,6 +457,9 @@ export default function Dashboard() {
       setShowEndMonth(false);
       setNetIncome("");
 
+      // advance dashboard month label to the new month
+      setViewDate(new Date(now.getFullYear(), now.getMonth() + 1, 1));
+
       //refresh envelopes and accounts after reset
       const [envsRes, accsRes] = await Promise.all([
         fetch(`${API}/envelopes`),
@@ -774,6 +766,12 @@ export default function Dashboard() {
             newEnvAmount={newEnvAmount} setNewEnvAmount={setNewEnvAmount}
             onSubmit={handleAddEnvelope}
             onClose={() => { setShowAddEnvelope(false); setNewEnvName(""); setNewEnvAmount(""); }}
+            leftToBudget={(() => {
+              const accBal = accounts.filter(a => a.include_in_budget).reduce((s, a) => s + parseFloat(a.balance), 0);
+              const unpaid = fixedCosts.filter(c => !c.paid).reduce((s, c) => s + parseFloat(c.amount), 0);
+              const allocated = envelopes.reduce((s, e) => s + parseFloat(e.balance), 0);
+              return Math.round((accBal - unpaid - allocated) * 100) / 100;
+            })()}
           />
         )}
 
@@ -799,13 +797,7 @@ export default function Dashboard() {
           <h1 className="text-[40px] font-bold text-text mb-1 inline-block border-b-4 border-accent pb-1">Dashboard</h1>
 
           <div className="flex items-center gap-2 mt-6 mb-5">
-            {hasHistory && (
-              <button onClick={goBack} className="text-muted hover:text-accent transition-colors text-[28px] font-bold leading-none">‹</button>
-            )}
             <span className="text-[28px] font-bold text-[#00BBA8] font-[var(--font-inter)]">{viewMonthLabel}</span>
-            {!isCurrentMonth && (
-              <button onClick={goForward} className="text-muted hover:text-accent transition-colors text-[28px] font-bold leading-none">›</button>
-            )}
           </div>
 
           <div className="flex items-center gap-3">

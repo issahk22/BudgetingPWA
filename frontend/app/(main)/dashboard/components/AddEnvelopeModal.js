@@ -1,10 +1,17 @@
 "use client";
 
-export default function AddEnvelopeModal({ newEnvName, setNewEnvName, newEnvAmount, setNewEnvAmount, onSubmit, onClose }) {
+export default function AddEnvelopeModal({ newEnvName, setNewEnvName, newEnvAmount, setNewEnvAmount, onSubmit, onClose, leftToBudget }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50" onClick={onClose}>
     <form className="bg-card border border-border rounded-xl p-5 w-full max-w-md flex flex-col gap-3" onClick={(e) => e.stopPropagation()} onSubmit={onSubmit}>
       <h3 className="text-text mb-1">Add Envelope</h3>
+
+      <div className="flex justify-between items-center text-sm bg-gray-800 rounded-lg px-3 py-2">
+        <span className="text-muted">Left to budget</span>
+        <span className={leftToBudget < 0 ? "text-negative font-medium" : "text-accent font-medium"}>
+          £{(leftToBudget ?? 0).toFixed(2)}
+        </span>
+      </div>
 
       <label className="flex flex-col gap-1 text-sm text-muted">
         Name
