@@ -436,13 +436,14 @@ export default function Dashboard() {
     setClosingMonth(true);
 
     try {
-      const now = new Date();
+      const closeMonth = viewDate.getMonth() + 1; // 1-based from viewDate
+      const closeYear = viewDate.getFullYear();
       const res = await fetch(`${API}/month-close`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          month: now.getMonth() + 1,
-          year: now.getFullYear(),
+          month: closeMonth,
+          year: closeYear,
           net_income: parseFloat(netIncome),
         }),
       });
@@ -458,7 +459,7 @@ export default function Dashboard() {
       setNetIncome("");
 
       // advance dashboard month label to the new month
-      setViewDate(new Date(now.getFullYear(), now.getMonth() + 1, 1));
+      setViewDate(new Date(closeYear, closeMonth, 1));
 
       //refresh envelopes and accounts after reset
       const [envsRes, accsRes] = await Promise.all([

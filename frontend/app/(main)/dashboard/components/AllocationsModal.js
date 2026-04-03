@@ -11,7 +11,7 @@ export default function AllocationsModal({
   const availableBudget = accountBalance - fixedTotal;
   const allocatedSum = Object.values(allocations).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
   const savingsSum = Object.values(savingsInputs).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
-  const remaining = availableBudget - allocatedSum - savingsSum;
+  const remaining = Math.round((availableBudget - allocatedSum - savingsSum) * 100) / 100;
   const isNegativeAvailable = availableBudget < 0;
   const potAccounts = accounts.filter((a) => a.account_type === "pot");
 
@@ -57,7 +57,7 @@ export default function AllocationsModal({
               <div className="flex-1">
                 <span className="text-sm text-text">{env.envelope_name}</span>
                 {lastMonthSpend?.[env.envelope_name] !== undefined && (
-                  <p className="text-xs text-muted">Last month: £{lastMonthSpend[env.envelope_name].toFixed(2)}</p>
+                  <p className="text-xs text-muted">Last month actual spend: £{lastMonthSpend[env.envelope_name].toFixed(2)}</p>
                 )}
               </div>
               <input

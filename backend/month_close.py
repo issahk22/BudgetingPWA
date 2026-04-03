@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import date
 from database import SessionLocal as LiveSession
 from history_database import SessionLocal as HistorySession
-from models import Account, FixedCost, Envelope, Shift, Job, MonthOpenSnapshot
+from models import Account, FixedCost, Envelope, Shift, Transaction, Transfer, Job, MonthOpenSnapshot
 from history_models import MonthSummary, EnvelopeHistory, ShiftHistory, FixedCostHistory, GoalHistory
 
 def get_live_db():
@@ -192,6 +192,13 @@ def write_to_history(history_db: Session, summaries: dict, month: int, year: int
 
     try:
 
+        # clear any existing history for this month (allows safe re-close)
+        history_db.query(MonthSummary).filter(MonthSummary.month == month, MonthSummary.year == year).delete()
+        history_db.query(EnvelopeHistory).filter(EnvelopeHistory.month == month, EnvelopeHistory.year == year).delete()
+        history_db.query(ShiftHistory).filter(ShiftHistory.month == month, ShiftHistory.year == year).delete()
+        history_db.query(FixedCostHistory).filter(FixedCostHistory.month == month, FixedCostHistory.year == year).delete()
+        history_db.query(GoalHistory).filter(GoalHistory.month == month, GoalHistory.year == year).delete()
+
         ms = summaries["month_summary"]
         history_db.add(MonthSummary(
             month                    = ms["month"],
@@ -283,6 +290,12 @@ def reset_live_db(live_db: Session, month: int, year: int, net_income: float):
 
         #deletes all shifts for the month
         live_db.query(Shift).delete()
+
+        #deletes all envelope transactions (start fresh each month)
+        live_db.query(Transaction).delete()
+
+        #deletes all transfer logs
+        live_db.query(Transfer).delete()
 
 
         #add net income to the primary bank account (first bank account ordered by name)

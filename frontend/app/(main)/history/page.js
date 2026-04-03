@@ -104,9 +104,7 @@ export default function History() {
             const key = `${m.year}-${m.month}`;
             const isOpen = openKey === key;
             const detail = details[key];
-            const netIncome = parseFloat(m.actual_net_income);
             const totalSpent = parseFloat(m.total_spent);
-            const leftover = netIncome - totalSpent;
 
             return (
               <Card key={key}>
@@ -121,27 +119,17 @@ export default function History() {
                         {formatMonth(m.month, m.year)}
                       </h2>
                       <p className="text-xs text-muted mt-1">
-                        {m.shifts_worked} shifts · {parseFloat(m.hours_worked).toFixed(0)}h worked
+                        {parseFloat(m.hours_worked).toFixed(0)}h worked
                       </p>
                     </div>
                     <span className="text-muted text-xs mt-2">{isOpen ? "▲" : "▼"}</span>
                   </div>
 
                   {/* Summary stat grid */}
-                  <div className="grid grid-cols-4 gap-3 mt-4 text-sm">
-                    <div>
-                      <p className="text-xs text-muted">Net Income</p>
-                      <p className="text-accent font-semibold">{money(m.actual_net_income)}</p>
-                    </div>
+                  <div className="grid grid-cols-2 gap-3 mt-4 text-sm">
                     <div>
                       <p className="text-xs text-muted">Total Spent</p>
-                      <p className="text-text font-semibold">{money(m.total_spent)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted">Leftover</p>
-                      <p className={leftover < 0 ? "text-negative font-semibold" : "text-text font-semibold"}>
-                        {money(leftover)}
-                      </p>
+                      <p className="text-accent font-semibold">{money(m.total_spent)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted">Closing Balance</p>
@@ -237,28 +225,35 @@ export default function History() {
                           )}
                         </div>
 
-                        {/* Shifts */}
+                        {/* Hours by shift type */}
                         <div>
-                          <h3 className="text-sm font-semibold text-text mb-2">
-                            Shifts <span className="text-xs text-muted font-normal">({detail.shifts.length})</span>
-                          </h3>
+                          <h3 className="text-sm font-semibold text-text mb-2">Hours Worked</h3>
                           {detail.shifts.length === 0 ? (
                             <p className="text-xs text-muted">No shifts.</p>
-                          ) : (
-                            <ul className="divide-y divide-gray-700 text-sm">
-                              {detail.shifts.map((s) => (
-                                <li key={s.id} className="py-2 flex justify-between">
-                                  <span className="text-text">
-                                    {s.date}
-                                    <span className="text-xs text-muted ml-2">
-                                      · {formatShiftType(s.shift_type)} · {parseFloat(s.hours_worked).toFixed(1)}h · x{parseFloat(s.rate_multiplier).toFixed(3)}
-                                    </span>
-                                  </span>
-                                  <span className="text-text font-medium">{money(s.total_pay)}</span>
+                          ) : (() => {
+                            const byType = {};
+                            let totalHours = 0;
+                            detail.shifts.forEach((s) => {
+                              const h = parseFloat(s.hours_worked);
+                              const type = s.shift_type;
+                              byType[type] = (byType[type] || 0) + h;
+                              totalHours += h;
+                            });
+                            return (
+                              <ul className="divide-y divide-gray-700 text-sm">
+                                {Object.entries(byType).map(([type, hours]) => (
+                                  <li key={type} className="py-2 flex justify-between">
+                                    <span className="text-text">{formatShiftType(type)}</span>
+                                    <span className="text-text">{hours.toFixed(1)}h</span>
+                                  </li>
+                                ))}
+                                <li className="py-2 flex justify-between font-semibold">
+                                  <span className="text-text">Total</span>
+                                  <span className="text-accent">{totalHours.toFixed(1)}h</span>
                                 </li>
-                              ))}
-                            </ul>
-                          )}
+                              </ul>
+                            );
+                          })()}
                         </div>
 
                         {/* Goals / pots */}
