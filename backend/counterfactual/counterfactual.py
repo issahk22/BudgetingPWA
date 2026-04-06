@@ -90,9 +90,33 @@ def predict_spending(spending_model: dict, income: float) -> float:
     return spending_model["intercept"] + spending_model["coefficients"][0] * income
 
 
+## Spending Ratio Failsafe ##
+# when counterfactual hours exceed historical max by 1/3, the OLS spending model switches to outputting a ratio instead 
+
+#returns true if any shift type hours exceed the historical max by 1/3
+def _exceeds_historical_range(panel, shift_types, hours_by_type):
+    for t in shift_types:
+        max_hist = max((r["hours_by_type"].get(t, 0.0) for r in panel), default=0.0)
+        if hours_by_type.get(t, 0.0) > max_hist * (4 / 3):
+            return True
+    return False
+
+#returns average ratio of total spent / income across all months 
+def _historical_spending_ratio(panel):
+    ratios = [r["total_spent"] / r["income"] for r in panel if r["income"] > 0]
+    return sum(ratios) / len(ratios) if ratios else 0.5
+
+#uses spending ratio if threshold exceeded OR if OLS learned a negative income coefficient (economically nonsensical)
+def _predict_spending_safe(spending_model, income, panel, shift_types, hours_by_type):
+    if _exceeds_historical_range(panel, shift_types, hours_by_type) or spending_model["coefficients"][0] <= 0:
+        ratio = _historical_spending_ratio(panel)
+        return max(0.0, income * ratio)
+    return predict_spending(spending_model, income)
+
+
 ## Monte Carlo Layer ##
 
-def monte_carlo(income_model, spending_model, hours, n_simulations=1000): #1000 as from research paper 
+def monte_carlo(income_model, spending_model, hours, panel=None, shift_types=None, n_simulations=1000): #1000 as from research paper
     """
     returns percentile bands for income, spending, and left_over
 
@@ -117,8 +141,11 @@ def monte_carlo(income_model, spending_model, hours, n_simulations=1000): #1000 
         #deterministic prediction (from SCM) + the sampled noise
         draw_income = base_income + u_income
 
-        #feeds noisy income through model b to calculate spending
-        draw_spent = max(0.0, predict_spending(spending_model, draw_income) + u_spending) #max to prevent negative spending
+        #feeds noisy income through model b to calculate spending (uses ratio fallback if extrapolating)
+        if panel is not None and shift_types is not None:
+            draw_spent = max(0.0, _predict_spending_safe(spending_model, draw_income, panel, shift_types, hours) + u_spending)
+        else:
+            draw_spent = max(0.0, predict_spending(spending_model, draw_income) + u_spending) #max to prevent negative spending
         draw_left  = draw_income - draw_spent #amount left after spending
 
         #stores each value in the list
@@ -211,7 +238,7 @@ def counterfactual_hindsight(
     #3. prediction -> predicts the outcome of the scenario with counterfactual values 
     cf_income = cf_income_base + residual_income
 
-    cf_spent = predict_spending(spending_model, cf_income) + residual_spending
+    cf_spent = _predict_spending_safe(spending_model, cf_income, panel, shift_types, cf_hours) + residual_spending
 
     cf_spent = max(0.0, cf_spent)
 
@@ -219,8 +246,8 @@ def counterfactual_hindsight(
 
     actual_left_over = target["income"] - target["total_spent"]
 
-    
-    distribution = monte_carlo(income_model, spending_model, cf_hours)
+
+    distribution = monte_carlo(income_model, spending_model, cf_hours, panel, shift_types)
 
     return {
 
@@ -358,13 +385,13 @@ def counterfactual_forecasting(
     #3. Prediction
 
 
-    #baseline prediction for income and spending by running through model a and b 
+    #baseline prediction for income and spending by running through model a and b
     baseline_income = predict_income(income_model, avg_hours) + residual_income
-    baseline_spent = max(0.0, predict_spending(spending_model, baseline_income) + residual_spending)
+    baseline_spent = max(0.0, _predict_spending_safe(spending_model, baseline_income, panel, shift_types, avg_hours) + residual_spending)
 
     #predict with user's chosen hours
     planned_income = predict_income(income_model, planned_hours) + residual_income
-    planned_spent = max(0.0, predict_spending(spending_model, planned_income) + residual_spending)
+    planned_spent = max(0.0, _predict_spending_safe(spending_model, planned_income, panel, shift_types, planned_hours) + residual_spending)
 
     
     fixed_costs = _get_fixed_costs_avg()
@@ -422,7 +449,7 @@ def counterfactual_forecasting(
 
 
     
-    planned_distribution = monte_carlo(income_model, spending_model, planned_hours)
+    planned_distribution = monte_carlo(income_model, spending_model, planned_hours, panel, shift_types)
 
     return {
 

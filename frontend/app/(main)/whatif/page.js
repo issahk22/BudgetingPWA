@@ -204,16 +204,25 @@ export default function WhatIf() {
           )}
 
           {/* Counterfactual hour inputs */}
-          <div className="flex flex-col gap-2">
-            {shiftTypes.map((type) => (
-              <label key={type} className="flex flex-col gap-1 text-sm text-muted">
-                Counterfactual {formatType(type)} Hours
-                <input type="number" required min="0" step="0.5" value={cfHours[type] || ""}
-                  onChange={(e) => setCfHours({ ...cfHours, [type]: e.target.value })}
-                  className="px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-              </label>
-            ))}
-          </div>
+          {(() => {
+            const minHistorical = historyMonths.length > 0
+              ? Math.min(...historyMonths.map((m) => parseFloat(m.hours_worked)))
+              : 0;
+            const minHours = Math.round((minHistorical * (2 / 3)) * 2) / 2; // round to nearest 0.5
+            return (
+              <div className="flex flex-col gap-2">
+                {shiftTypes.map((type) => (
+                  <label key={type} className="flex flex-col gap-1 text-sm text-muted">
+                    Counterfactual {formatType(type)} Hours
+                    <input type="number" required min={minHours} step="0.5" value={cfHours[type] || ""}
+                      onChange={(e) => setCfHours({ ...cfHours, [type]: e.target.value })}
+                      className="px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                    <span className="text-xs text-muted">Min: {minHours}h (⅓ below your lowest month)</span>
+                  </label>
+                ))}
+              </div>
+            );
+          })()}
 
           <button type="submit" disabled={hindsightLoading}
             className="w-full px-4 py-2 rounded-lg bg-accent text-white font-medium text-sm hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -237,7 +246,7 @@ export default function WhatIf() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center">
-                    <span className="flex-1 text-muted">Income</span>
+                    <span className="flex-1 text-muted">Income (gross)</span>
                     <span className="w-28 text-center text-text">{money(hindsightResult.counterfactual.cf_income)}</span>
                     <span className="w-36 text-center text-muted text-xs">{money(hindsightResult.distribution.income.p2_5)} – {money(hindsightResult.distribution.income.p97_5)}</span>
                   </div>
