@@ -114,7 +114,7 @@ export default function Dashboard() {
 
     // set dashboard month to the month after the latest closed month (falls back to real current month)
     if (histMonths.length > 0) {
-      const latest = histMonths[histMonths.length - 1];
+      const latest = histMonths[0];
       // latest.month is 1-based; JS Date month is 0-based, so passing latest.month directly = next month
       setViewDate(new Date(latest.year, latest.month, 1));
     }
@@ -505,7 +505,7 @@ export default function Dashboard() {
         const monthsRes = await fetch(`${API}/history/months`);
         const months = await monthsRes.json();
         if (months.length > 0) {
-          const latest = months[months.length - 1];
+          const latest = months[0];
           const envHistRes = await fetch(`${API}/history/envelopes/${latest.year}/${latest.month}`);
           const envHist = await envHistRes.json();
           const spendMap = {};

@@ -17,7 +17,7 @@ export default function AllocationsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50">
-    <form className="bg-card border border-border rounded-xl p-5 w-full max-w-lg flex flex-col gap-3 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} onSubmit={onSubmit}>
+    <form className="bg-card border border-border rounded-xl p-7 w-full max-w-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} onSubmit={onSubmit}>
       <h3 className="text-text mb-1">Envelope Allocations</h3>
 
       {/* Budget summary */}
@@ -48,8 +48,8 @@ export default function AllocationsModal({
         <>
           <div className="flex text-xs text-muted font-medium border-b border-gray-700 pb-1 mb-1">
             <span className="flex-1">Envelope</span>
-            <span className="w-28 text-right">Amount (£)</span>
-            {recommendations && <span className="w-32 text-right text-accent">Recommended (£)</span>}
+            <span className="w-28 text-center">Amount (£)</span>
+            {recommendations && <span className="w-32 text-center text-accent">Recommended (£)</span>}
           </div>
 
           {envelopes.map((env) => (
@@ -64,10 +64,10 @@ export default function AllocationsModal({
                 type="number" min="0" step="0.01"
                 value={allocations[env.id] ?? ""}
                 onChange={(e) => setAllocations((prev) => ({ ...prev, [env.id]: e.target.value }))}
-                className="w-28 px-3 py-1.5 bg-gray-700 border border-border rounded-lg text-text text-sm text-right focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-28 px-3 py-1.5 bg-gray-700 border border-border rounded-lg text-text text-sm text-center focus:outline-none focus:ring-2 focus:ring-accent"
               />
               {recommendations && (
-                <span className="w-32 text-right text-sm text-accent">
+                <span className="w-32 text-center text-sm text-accent">
                   {recommendations[env.envelope_name] !== undefined
                     ? `£${recommendations[env.envelope_name].toFixed(2)}`
                     : "—"}
@@ -85,7 +85,7 @@ export default function AllocationsModal({
             <>
               <div className="flex text-xs text-muted font-medium border-b border-gray-700 pb-1 mb-1 mt-3">
                 <span className="flex-1">Savings</span>
-                <span className="w-28 text-right">Amount (£)</span>
+                <span className="w-28 text-center">Amount (£)</span>
               </div>
 
               {potAccounts.map((pot) => (
@@ -96,7 +96,7 @@ export default function AllocationsModal({
                     placeholder="0.00"
                     value={savingsInputs[pot.id] ?? ""}
                     onChange={(e) => setSavingsInputs((prev) => ({ ...prev, [pot.id]: e.target.value }))}
-                    className="w-28 px-3 py-1.5 bg-gray-700 border border-border rounded-lg text-text text-sm text-right focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="w-28 px-3 py-1.5 bg-gray-700 border border-border rounded-lg text-text text-sm text-center focus:outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
               ))}

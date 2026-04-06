@@ -100,7 +100,7 @@ export default function History() {
         </Card>
       ) : (
         <div className="flex flex-col gap-4 max-w-4xl">
-          {months.map((m) => {
+          {months.map((m, idx) => {
             const key = `${m.year}-${m.month}`;
             const isOpen = openKey === key;
             const detail = details[key];
@@ -148,10 +148,12 @@ export default function History() {
 
                         {/* Opening / closing + income breakdown */}
                         <div className="bg-[#262626] rounded-lg p-3 grid grid-cols-2 gap-3 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted">Opening balance</span>
-                            <span className="text-text">{money(m.accounts_opening_balance)}</span>
-                          </div>
+                          {idx < months.length - 1 && (
+                            <div className="flex justify-between">
+                              <span className="text-muted">Opening balance</span>
+                              <span className="text-text">{money(m.accounts_opening_balance)}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between">
                             <span className="text-muted">Closing balance</span>
                             <span className="text-text">{money(m.accounts_closing_balance)}</span>

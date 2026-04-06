@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 
 const API = "http://localhost:8000";
 
@@ -9,11 +8,19 @@ function formatType(type) {
   return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function money(v) {
+  return `£${parseFloat(v).toFixed(2)}`;
+}
+
 export default function WhatIf() {
   const [shiftTypes, setShiftTypes] = useState([]);
-
-  //minimum months of history required before the models can run
   const [sufficiency, setSufficiency] = useState(null);
+  const [historyMonths, setHistoryMonths] = useState([]);
 
   // Hindsight
   const [hindsightForm, setHindsightForm] = useState({ month: "", year: "" });
@@ -23,13 +30,12 @@ export default function WhatIf() {
   const [hindsightError, setHindsightError] = useState(null);
   const [hindsightLoading, setHindsightLoading] = useState(false);
 
-  // forecasting
+  // Forecasting
   const [forecastHours, setForecastHours] = useState({});
   const [forecastResult, setForecastResult] = useState(null);
   const [forecastError, setForecastError] = useState(null);
   const [forecastLoading, setForecastLoading] = useState(false);
 
-  // fetch shift types + sufficiency on mount, initialise both hour dicts
   useEffect(() => {
     fetch(`${API}/counterfactual/shift-types`)
       .then((r) => r.json())
@@ -46,21 +52,27 @@ export default function WhatIf() {
       .then((r) => r.json())
       .then((data) => setSufficiency(data))
       .catch(() => setSufficiency({ sufficient: false, error: "Failed to reach the backend." }));
+
+    fetch(`${API}/history/months`)
+      .then((r) => r.json())
+      .then((data) => setHistoryMonths(data))
+      .catch(() => {});
   }, []);
 
-  // fetch month summary when month + year filled (for hindsight)
-  useEffect(() => {
-    if (!hindsightForm.month || !hindsightForm.year) {
+  function selectHistoryMonth(val) {
+    if (!val) {
+      setHindsightForm({ month: "", year: "" });
       setMonthSummary(null);
       return;
     }
-    fetch(`${API}/counterfactual/month-summary/${hindsightForm.year}/${hindsightForm.month}`)
+    const [year, month] = val.split("-").map(Number);
+    setHindsightForm({ month, year });
+    fetch(`${API}/counterfactual/month-summary/${year}/${month}`)
       .then((r) => r.json())
       .then((data) => setMonthSummary(Object.keys(data).length ? data : null))
       .catch(() => setMonthSummary(null));
-  }, [hindsightForm.month, hindsightForm.year]);
+  }
 
-  // Hindsight submit
   async function handleHindsightSubmit(e) {
     e.preventDefault();
     setHindsightLoading(true);
@@ -90,7 +102,6 @@ export default function WhatIf() {
     }
   }
 
-  // Forecasting submit
   async function handleForecastSubmit(e) {
     e.preventDefault();
     setForecastLoading(true);
@@ -116,25 +127,19 @@ export default function WhatIf() {
     }
   }
 
-  // not enough months of history to run the models
+  // Locked screen
   if (sufficiency && !sufficiency.sufficient) {
-    const monthsShort = Math.max(0, (sufficiency.minimum_required || 0) - (sufficiency.months_available || 0));
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="card bg-[#323232] border border-border rounded-xl p-8 max-w-md w-full text-center">
+        <div className="bg-card border border-border rounded-xl p-8 max-w-md w-full text-center">
           <h2 className="text-xl font-bold text-text mb-4">Locked</h2>
-
           {sufficiency.error ? (
             <p className="text-muted text-sm">{sufficiency.error}</p>
           ) : (
-            <>
-              <p className="text-muted text-sm mb-3">
-                The What If models need at least{" "}
-                <span className="text-text font-semibold">6 months</span> of closed history to run.
-              </p>
-              
-              
-            </>
+            <p className="text-muted text-sm">
+              The What If models need at least{" "}
+              <span className="text-text font-semibold">6 months</span> of closed history to run.
+            </p>
           )}
         </div>
       </div>
@@ -142,241 +147,284 @@ export default function WhatIf() {
   }
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "650px" }}>
-      <Link href="/dashboard">Back to Dashboard</Link>
-      <h1>What If?</h1>
+    <div className="max-w-2xl">
+      <div className="mb-6">
+        <h1 className="text-[40px] font-bold text-text mb-1 inline-block border-b-4 border-accent pb-1">What If?</h1>
+      </div>
 
-      {/*Hindsight */}
-      <h2>Hindsight</h2>
-      
+      {/* ── Hindsight ── */}
+      <div className="bg-card border border-border rounded-xl p-5 mb-6">
+        <h2 className="text-xl font-bold text-text mb-4">Hindsight</h2>
 
-      <form onSubmit={handleHindsightSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "1rem" }}>
-
-        <label>
-          Month (1-12)
-          <input type="number" required min="1" max="12" value={hindsightForm.month}
-            onChange={(e) => setHindsightForm({ ...hindsightForm, month: e.target.value })} />
-        </label>
-
-        <label>
-          Year
-          <input type="number" required min="2020" value={hindsightForm.year}
-            onChange={(e) => setHindsightForm({ ...hindsightForm, year: e.target.value })} />
-        </label>
-
-        {/* actual month summary */}
-        {monthSummary && monthSummary.hours && (
-          <table border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%", marginTop: "0.25rem" }}>
-            <tbody>
-              {Object.entries(monthSummary.hours).map(([type, hrs]) => (
-                <tr key={type}><td>{formatType(type)} Hours</td><td>{hrs}h</td></tr>
+        <form onSubmit={handleHindsightSubmit} className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1 text-sm text-muted">
+            Select Month
+            <select required
+              value={hindsightForm.month && hindsightForm.year ? `${hindsightForm.year}-${hindsightForm.month}` : ""}
+              onChange={(e) => selectHistoryMonth(e.target.value)}
+              className="px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+              <option value="">Choose a month</option>
+              {historyMonths.map((m) => (
+                <option key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
+                  {MONTH_NAMES[m.month - 1]} {m.year}
+                </option>
               ))}
-              <tr><td>Income</td><td>£{parseFloat(monthSummary.income).toFixed(2)}</td></tr>
-              <tr><td>Total Spent</td><td>£{parseFloat(monthSummary.total_spent).toFixed(2)}</td></tr>
-              <tr><td>Left Over</td><td>£{parseFloat(monthSummary.left_over).toFixed(2)}</td></tr>
-            </tbody>
-          </table>
-        )}
-
-        {!monthSummary && hindsightForm.month && hindsightForm.year && (
-          <p style={{ color: "grey" }}>No data found for this month.</p>
-        )}
-
-        {/* counterfactual hour inputs */}
-        {shiftTypes.map((type) => (
-          <label key={type}>
-            Counterfactual {formatType(type)} Hours
-            <input type="number" required min="0" step="0.5" value={cfHours[type] || ""}
-              onChange={(e) => setCfHours({ ...cfHours, [type]: e.target.value })} />
+            </select>
           </label>
-        ))}
 
-        <button type="submit" disabled={hindsightLoading}>
-          {hindsightLoading ? "Calculating..." : "Run Hindsight"}
-        </button>
-      </form>
-
-      {hindsightError && <p style={{ color: "red", marginTop: "1rem" }}>{hindsightError}</p>}
-
-      {hindsightResult && (
-        <div style={{ marginTop: "2rem" }}>
-          <h3>Actual ({String(hindsightForm.month).padStart(2, "0")}/{hindsightForm.year})</h3>
-          <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
-            <tbody>
-              {hindsightResult.actual.hours && Object.entries(hindsightResult.actual.hours).map(([type, hrs]) => (
-                <tr key={type}><td>{formatType(type)} Hours</td><td>{hrs}h</td></tr>
-              ))}
-              <tr><td>Income</td><td>£{hindsightResult.actual.income.toFixed(2)}</td></tr>
-              <tr><td>Total Spent</td><td>£{hindsightResult.actual.total_spent.toFixed(2)}</td></tr>
-              <tr><td>Left Over</td><td>£{hindsightResult.actual.left_over.toFixed(2)}</td></tr>
-            </tbody>
-          </table>
-
-
-
-          <h3 style={{ marginTop: "1rem" }}>Counterfactual</h3>
-          <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
-            <thead>
-              <tr><th></th><th>Estimate</th><th>95% CI</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Income</td>
-                <td>£{hindsightResult.counterfactual.cf_income.toFixed(2)}</td>
-                <td>£{hindsightResult.distribution.income.p2_5} – £{hindsightResult.distribution.income.p97_5}</td>
-              </tr>
-              <tr>
-                <td>Total Spent</td>
-                <td>£{hindsightResult.counterfactual.cf_spent.toFixed(2)}</td>
-                <td>£{hindsightResult.distribution.spending.p2_5} – £{hindsightResult.distribution.spending.p97_5}</td>
-              </tr>
-              <tr>
-                <td>Left Over</td>
-                <td>£{hindsightResult.counterfactual.cf_left_over.toFixed(2)}</td>
-                <td>£{hindsightResult.distribution.left_over.p2_5} – £{hindsightResult.distribution.left_over.p97_5}</td>
-              </tr>
-            </tbody>
-          </table>
-
-
-
-          <h3 style={{ marginTop: "1rem" }}>Model Fit</h3>
-
-          <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
-            <tbody>
-              <tr><td>Income R²</td><td>{hindsightResult.model_fit.income_r2}</td></tr>
-              <tr><td>Spending R²</td><td>{hindsightResult.model_fit.spending_r2}</td></tr>
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <hr style={{ margin: "2rem 0" }} />
-
-
-
-      {/* forecasting */}
-      <h2>Forecasting</h2>
-      
-
-
-      <form onSubmit={handleForecastSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "1rem" }}>
-
-        {/* planned hour inputs  (one per shift type) */}
-        {shiftTypes.map((type) => (
-          <label key={type}>
-            Planned {formatType(type)} Hours
-            <input type="number" required min="0" step="0.5" value={forecastHours[type] || ""}
-              onChange={(e) => setForecastHours({ ...forecastHours, [type]: e.target.value })} />
-          </label>
-        ))}
-
-        <button type="submit" disabled={forecastLoading}>
-          {forecastLoading ? "Calculating..." : "Run Forecast"}
-        </button>
-      </form>
-
-      {forecastError && <p style={{ color: "red", marginTop: "1rem" }}>{forecastError}</p>}
-
-      {forecastResult && (
-        <div style={{ marginTop: "2rem" }}>
-
-          {/* baseline vs planned income/spending */}
-          <h3>Baseline vs Planned</h3>
-
-          <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
-            <thead>
-              <tr><th></th><th>Baseline (avg month)</th><th>Planned</th></tr>
-            </thead>
-            <tbody>
-
-              {shiftTypes.map((t) => (
-                <tr key={t}>
-                  <td>{formatType(t)} Hours</td>
-                  <td>{forecastResult.baseline.hours[t] ?? 0}h</td>
-                  <td>{forecastResult.planned.hours[t] ?? 0}h</td>
-                </tr>
-                
-              ))}
-              <tr><td>Income</td><td>£{forecastResult.baseline.income.toFixed(2)}</td><td>£{forecastResult.planned.income.toFixed(2)}</td></tr>
-              <tr><td>Fixed Costs</td><td>£{forecastResult.baseline.fixed_costs.toFixed(2)}</td><td>£{forecastResult.planned.fixed_costs.toFixed(2)}</td></tr>
-              <tr><td>Envelope Spending</td><td>£{forecastResult.baseline.envelope_spending.toFixed(2)}</td><td>£{forecastResult.planned.envelope_spending.toFixed(2)}</td></tr>
-              <tr><td>Available to Save</td><td>£{forecastResult.baseline.available_to_save.toFixed(2)}</td><td>£{forecastResult.planned.available_to_save.toFixed(2)}</td></tr>
-              <tr><td>Goal Contribution</td><td>£{forecastResult.baseline.goal_contribution.toFixed(2)}</td><td>£{forecastResult.planned.goal_contribution.toFixed(2)}</td></tr>
-            </tbody>
-          </table>
-
-
-
-          
-          {forecastResult.distribution && (
-            <>
-              <h3 style={{ marginTop: "1.5rem" }}>Planned — 95% Confidence Interval</h3>
-              <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
-                <thead>
-                  <tr><th></th><th>Lower (p2.5)</th><th>Median (p50)</th><th>Upper (p97.5)</th></tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Income</td>
-                    <td>£{forecastResult.distribution.income.p2_5}</td>
-                    <td>£{forecastResult.distribution.income.p50}</td>
-                    <td>£{forecastResult.distribution.income.p97_5}</td>
-                  </tr>
-
-                  <tr>
-                    <td>Envelope Spending</td>
-                    <td>£{forecastResult.distribution.spending.p2_5}</td>
-                    <td>£{forecastResult.distribution.spending.p50}</td>
-                    <td>£{forecastResult.distribution.spending.p97_5}</td>
-                  </tr>
-
-                  <tr>
-                    <td>Left Over</td>
-                    <td>£{forecastResult.distribution.left_over.p2_5}</td>
-                    <td>£{forecastResult.distribution.left_over.p50}</td>
-                    <td>£{forecastResult.distribution.left_over.p97_5}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </>
+          {/* Actual month summary */}
+          {monthSummary && monthSummary.hours && (
+            <div className="bg-[#262626] rounded-lg p-3 text-sm">
+              <p className="text-xs text-muted font-medium mb-2">Actual Summary</p>
+              <div className="flex flex-col gap-1">
+                {Object.entries(monthSummary.hours).map(([type, hrs]) => (
+                  <div key={type} className="flex justify-between">
+                    <span className="text-muted">{formatType(type)} Hours</span>
+                    <span className="text-text">{hrs}h</span>
+                  </div>
+                ))}
+                <div className="flex justify-between border-t border-gray-700 pt-1 mt-1">
+                  <span className="text-muted">Income</span>
+                  <span className="text-text">{money(monthSummary.income)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">Total Spent</span>
+                  <span className="text-text">{money(monthSummary.total_spent)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">Left Over</span>
+                  <span className="text-text">{money(monthSummary.left_over)}</span>
+                </div>
+              </div>
+            </div>
           )}
 
-          
+          {!monthSummary && hindsightForm.month && hindsightForm.year && (
+            <p className="text-sm text-muted">No data found for this month.</p>
+          )}
 
-          {/* goal projections */}
-          {forecastResult.goals.length > 0 && (
-            <>
-              <h3 style={{ marginTop: "1.5rem" }}>Goal Projections</h3>
-              <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
-                <thead>
-                  <tr><th>Goal</th><th>Current</th><th>Target</th><th>Baseline Progress</th><th>Planned Progress</th></tr>
-                </thead>
-                <tbody>
-                  {forecastResult.goals.map((g) => (
-                    <tr key={g.goal_id}>
-                      <td>{g.goal_id}</td>
-                      <td>£{g.current_savings.toFixed(2)}</td>
-                      <td>£{g.target.toFixed(2)}</td>
-                      <td>{g.baseline_progress}%</td>
-                      <td>{g.planned_progress}%</td>
-                    </tr>
+          {/* Counterfactual hour inputs */}
+          <div className="flex flex-col gap-2">
+            {shiftTypes.map((type) => (
+              <label key={type} className="flex flex-col gap-1 text-sm text-muted">
+                Counterfactual {formatType(type)} Hours
+                <input type="number" required min="0" step="0.5" value={cfHours[type] || ""}
+                  onChange={(e) => setCfHours({ ...cfHours, [type]: e.target.value })}
+                  className="px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+              </label>
+            ))}
+          </div>
+
+          <button type="submit" disabled={hindsightLoading}
+            className="w-full px-4 py-2 rounded-lg bg-accent text-white font-medium text-sm hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            {hindsightLoading ? "Calculating..." : "Run Hindsight"}
+          </button>
+        </form>
+
+        {hindsightError && <p className="text-sm text-negative mt-3">{hindsightError}</p>}
+
+        {hindsightResult && (
+          <div className="mt-5 border-t border-gray-700 pt-4 flex flex-col gap-4">
+
+            {/* Counterfactual */}
+            <div>
+              <h3 className="text-sm font-semibold text-text mb-2">Counterfactual</h3>
+              <div className="bg-[#262626] rounded-lg p-3 text-sm">
+                <div className="flex text-xs text-muted font-medium mb-2 border-b border-gray-700 pb-1">
+                  <span className="flex-1"></span>
+                  <span className="w-28 text-center">Estimate</span>
+                  <span className="w-36 text-center">Range (95% confidence)</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center">
+                    <span className="flex-1 text-muted">Income</span>
+                    <span className="w-28 text-center text-text">{money(hindsightResult.counterfactual.cf_income)}</span>
+                    <span className="w-36 text-center text-muted text-xs">{money(hindsightResult.distribution.income.p2_5)} – {money(hindsightResult.distribution.income.p97_5)}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="flex-1 text-muted">Total Spent</span>
+                    <span className="w-28 text-center text-text">{money(hindsightResult.counterfactual.cf_spent)}</span>
+                    <span className="w-36 text-center text-muted text-xs">{money(hindsightResult.distribution.spending.p2_5)} – {money(hindsightResult.distribution.spending.p97_5)}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="flex-1 text-muted">Left Over</span>
+                    <span className="w-28 text-center text-text">{money(hindsightResult.counterfactual.cf_left_over)}</span>
+                    <span className="w-36 text-center text-muted text-xs">{money(hindsightResult.distribution.left_over.p2_5)} – {money(hindsightResult.distribution.left_over.p97_5)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Model Fit */}
+            <div>
+              <h3 className="text-sm font-semibold text-text mb-2">Model Fit</h3>
+              <div className="bg-[#262626] rounded-lg p-3 text-sm flex flex-col gap-1">
+                <div className="flex justify-between">
+                  <span className="text-muted">Income R²</span>
+                  <span className="text-text">{hindsightResult.model_fit.income_r2}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">Spending R²</span>
+                  <span className="text-text">{hindsightResult.model_fit.spending_r2}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Forecasting ── */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <h2 className="text-xl font-bold text-text mb-4">Forecasting</h2>
+
+        <form onSubmit={handleForecastSubmit} className="flex flex-col gap-3">
+          {shiftTypes.map((type) => (
+            <label key={type} className="flex flex-col gap-1 text-sm text-muted">
+              Planned {formatType(type)} Hours
+              <input type="number" required min="0" step="0.5" value={forecastHours[type] || ""}
+                onChange={(e) => setForecastHours({ ...forecastHours, [type]: e.target.value })}
+                className="px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+            </label>
+          ))}
+
+          <button type="submit" disabled={forecastLoading}
+            className="w-full px-4 py-2 rounded-lg bg-accent text-white font-medium text-sm hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            {forecastLoading ? "Calculating..." : "Run Forecast"}
+          </button>
+        </form>
+
+        {forecastError && <p className="text-sm text-negative mt-3">{forecastError}</p>}
+
+        {forecastResult && (
+          <div className="mt-5 border-t border-gray-700 pt-4 flex flex-col gap-4">
+
+            {/* Baseline vs Planned */}
+            <div>
+              <h3 className="text-sm font-semibold text-text mb-2">Baseline vs Planned</h3>
+              <div className="bg-[#262626] rounded-lg p-3 text-sm">
+                <div className="flex text-xs text-muted font-medium mb-2 border-b border-gray-700 pb-1">
+                  <span className="flex-1"></span>
+                  <span className="w-32 text-center">Baseline (avg)</span>
+                  <span className="w-32 text-center">Planned</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {shiftTypes.map((t) => (
+                    <div key={t} className="flex items-center">
+                      <span className="flex-1 text-muted">{formatType(t)} Hours</span>
+                      <span className="w-32 text-center text-text">{forecastResult.baseline.hours[t] ?? 0}h</span>
+                      <span className="w-32 text-center text-text">{forecastResult.planned.hours[t] ?? 0}h</span>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </>
-          )}
+                  <div className="border-t border-gray-700 pt-1 mt-1 flex flex-col gap-1">
+                    <div className="flex items-center">
+                      <span className="flex-1 text-muted">Income</span>
+                      <span className="w-32 text-center text-text">{money(forecastResult.baseline.income)}</span>
+                      <span className="w-32 text-center text-accent font-medium">{money(forecastResult.planned.income)}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="flex-1 text-muted">Fixed Costs</span>
+                      <span className="w-32 text-center text-text">{money(forecastResult.baseline.fixed_costs)}</span>
+                      <span className="w-32 text-center text-text">{money(forecastResult.planned.fixed_costs)}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="flex-1 text-muted">Envelope Spending</span>
+                      <span className="w-32 text-center text-text">{money(forecastResult.baseline.envelope_spending)}</span>
+                      <span className="w-32 text-center text-text">{money(forecastResult.planned.envelope_spending)}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="flex-1 text-muted">Available to Save</span>
+                      <span className="w-32 text-center text-text">{money(forecastResult.baseline.available_to_save)}</span>
+                      <span className="w-32 text-center text-accent font-medium">{money(forecastResult.planned.available_to_save)}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="flex-1 text-muted">Goal Contribution</span>
+                      <span className="w-32 text-center text-text">{money(forecastResult.baseline.goal_contribution)}</span>
+                      <span className="w-32 text-center text-text">{money(forecastResult.planned.goal_contribution)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-          <h3 style={{ marginTop: "1.5rem" }}>Model Fit</h3>
-          <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
-            <tbody>
-              <tr><td>Income R²</td><td>{forecastResult.model_fit.income_r2}</td></tr>
-              <tr><td>Spending R²</td><td>{forecastResult.model_fit.spending_r2}</td></tr>
-            </tbody>
-          </table>
+            {/* 95% Confidence Interval */}
+            {forecastResult.distribution && (
+              <div>
+                <h3 className="text-sm font-semibold text-text mb-2">Planned — 95% Confidence Interval</h3>
+                <div className="bg-[#262626] rounded-lg p-3 text-sm">
+                  <div className="flex text-xs text-muted font-medium mb-2 border-b border-gray-700 pb-1">
+                    <span className="flex-1"></span>
+                    <span className="w-24 text-center">Lower</span>
+                    <span className="w-24 text-center">Median</span>
+                    <span className="w-24 text-center">Upper</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center">
+                      <span className="flex-1 text-muted">Income</span>
+                      <span className="w-24 text-center text-text">{money(forecastResult.distribution.income.p2_5)}</span>
+                      <span className="w-24 text-center text-text">{money(forecastResult.distribution.income.p50)}</span>
+                      <span className="w-24 text-center text-text">{money(forecastResult.distribution.income.p97_5)}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="flex-1 text-muted">Envelope Spending</span>
+                      <span className="w-24 text-center text-text">{money(forecastResult.distribution.spending.p2_5)}</span>
+                      <span className="w-24 text-center text-text">{money(forecastResult.distribution.spending.p50)}</span>
+                      <span className="w-24 text-center text-text">{money(forecastResult.distribution.spending.p97_5)}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="flex-1 text-muted">Left Over</span>
+                      <span className="w-24 text-center text-text">{money(forecastResult.distribution.left_over.p2_5)}</span>
+                      <span className="w-24 text-center text-text">{money(forecastResult.distribution.left_over.p50)}</span>
+                      <span className="w-24 text-center text-text">{money(forecastResult.distribution.left_over.p97_5)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
-        </div>
-      )}
+            {/* Goal Projections */}
+            {forecastResult.goals.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-text mb-2">Goal Projections</h3>
+                <div className="bg-[#262626] rounded-lg p-3 text-sm">
+                  <div className="flex text-xs text-muted font-medium mb-2 border-b border-gray-700 pb-1">
+                    <span className="flex-1">Goal</span>
+                    <span className="w-20 text-center">Current</span>
+                    <span className="w-20 text-center">Target</span>
+                    <span className="w-20 text-center">Baseline</span>
+                    <span className="w-20 text-center">Planned</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {forecastResult.goals.map((g) => (
+                      <div key={g.goal_id} className="flex items-center">
+                        <span className="flex-1 text-muted">{g.goal_id}</span>
+                        <span className="w-20 text-center text-text">{money(g.current_savings)}</span>
+                        <span className="w-20 text-center text-text">{money(g.target)}</span>
+                        <span className="w-20 text-center text-text">{g.baseline_progress}%</span>
+                        <span className="w-20 text-center text-accent font-medium">{g.planned_progress}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Model Fit */}
+            <div>
+              <h3 className="text-sm font-semibold text-text mb-2">Model Fit</h3>
+              <div className="bg-[#262626] rounded-lg p-3 text-sm flex flex-col gap-1">
+                <div className="flex justify-between">
+                  <span className="text-muted">Income R²</span>
+                  <span className="text-text">{forecastResult.model_fit.income_r2}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">Spending R²</span>
+                  <span className="text-text">{forecastResult.model_fit.spending_r2}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
