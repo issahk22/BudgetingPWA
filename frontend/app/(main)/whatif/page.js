@@ -147,13 +147,15 @@ export default function WhatIf() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-6xl">
       <div className="mb-6">
         <h1 className="text-[40px] font-bold text-text mb-1 inline-block border-b-4 border-accent pb-1">What If?</h1>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
       {/* ── Hindsight ── */}
-      <div className="bg-card border border-border rounded-xl p-5 mb-6">
+      <div className="bg-card border border-border rounded-xl p-5">
         <h2 className="text-xl font-bold text-text mb-4">Hindsight</h2>
 
         <form onSubmit={handleHindsightSubmit} className="flex flex-col gap-3">
@@ -405,7 +407,7 @@ export default function WhatIf() {
                   <div className="flex flex-col gap-1">
                     {forecastResult.goals.map((g) => (
                       <div key={g.goal_id} className="flex items-center">
-                        <span className="flex-1 text-muted">{g.goal_id}</span>
+                        <span className="flex-1 text-muted">{g.name}</span>
                         <span className="w-20 text-center text-text">{money(g.current_savings)}</span>
                         <span className="w-20 text-center text-text">{money(g.target)}</span>
                         <span className="w-20 text-center text-text">{g.baseline_progress}%</span>
@@ -434,6 +436,8 @@ export default function WhatIf() {
           </div>
         )}
       </div>
+
+      </div>{/* end grid */}
     </div>
   );
 }

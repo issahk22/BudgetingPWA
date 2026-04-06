@@ -14,6 +14,7 @@ import MonthlyCosts from "./components/MonthlyCosts";
 import ManageCostsModal from "./components/ManageCostsModal";
 import ManagePotsModal from "./components/ManagePotsModal";
 import ShiftsCard from "./components/ShiftsCard";
+import UnexpectedExpenseModal from "./components/UnexpectedExpenseModal";
 
 const API = "http://localhost:8000";
 
@@ -65,6 +66,9 @@ export default function Dashboard() {
 
   //manage pots modal visibility
   const [showManagePots, setShowManagePots] = useState(false);
+
+  //unexpected expenditure modal
+  const [showUnexpected, setShowUnexpected] = useState(false);
 
   //envelope crud: add, edit, delete
   const [showAddEnvelope, setShowAddEnvelope] = useState(false);
@@ -684,6 +688,54 @@ export default function Dashboard() {
   }
 
 
+  async function handleUnexpectedExpense(transactions, unbudgetedAmount) {
+    try {
+      // create a transaction for each envelope allocation
+      for (const tx of transactions) {
+        const txRes = await fetch(`${API}/transactions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(tx),
+        });
+        const newTx = await txRes.json();
+
+        setEnvelopes((prev) =>
+          prev.map((env) => env.id === tx.envelope_id
+            ? { ...env, balance: parseFloat(env.balance) - tx.amount } : env)
+        );
+        if (tx.account_id) {
+          setAccounts((prev) =>
+            prev.map((a) => a.id === tx.account_id
+              ? { ...a, balance: parseFloat(a.balance) - tx.amount } : a)
+          );
+        }
+        setTransactions((prev) => ({
+          ...prev,
+          [tx.envelope_id]: [newTx, ...(prev[tx.envelope_id] || [])],
+        }));
+      }
+
+      // deduct unbudgeted portion directly from bank account
+      if (unbudgetedAmount > 0) {
+        const bank = accounts.find((a) => a.include_in_budget);
+        if (bank) {
+          const newBalance = parseFloat(bank.balance) - unbudgetedAmount;
+          await fetch(`${API}/accounts/${bank.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ balance: newBalance }),
+          });
+          setAccounts((prev) =>
+            prev.map((a) => a.id === bank.id ? { ...a, balance: newBalance } : a)
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Failed to handle unexpected expense:", err);
+    }
+  }
+
+
   if (loading) return <p className="text-muted text-lg">Loading...</p>;
 
 
@@ -749,6 +801,16 @@ export default function Dashboard() {
           />
         )}
 
+
+        {/* Unexpected Expenditure */}
+        {showUnexpected && (
+          <UnexpectedExpenseModal
+            envelopes={envelopes}
+            accounts={accounts}
+            onSubmit={handleUnexpectedExpense}
+            onClose={() => setShowUnexpected(false)}
+          />
+        )}
 
         {/* Manage Pots (edit goal target + deadline) */}
         {showManagePots && (
@@ -837,6 +899,13 @@ export default function Dashboard() {
               </>
             )}
             </div>
+
+            <button
+              className="px-4 py-2 rounded-lg font-medium text-sm border border-yellow-600 text-yellow-500 bg-black hover:bg-yellow-950 transition-colors"
+              onClick={() => setShowUnexpected(true)}
+            >
+              Unexpected Expenditure
+            </button>
 
             <button
               className="px-4 py-2 rounded-lg font-medium text-sm border border-red-600 text-red-500 bg-black hover:bg-red-950 transition-colors"

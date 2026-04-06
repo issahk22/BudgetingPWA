@@ -94,6 +94,14 @@ def verify_pin(payload: PinInput, db: Session = Depends(get_db)):
     return {"valid": valid}
 
 
+@app.get("/users/me", response_model=UserResponse)
+def get_user(db: Session = Depends(get_db)):
+    user = db.query(User).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="No user found")
+    return user
+
+
 @app.post("/users", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
 

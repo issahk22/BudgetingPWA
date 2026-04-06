@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const API = "http://localhost:8000";
@@ -9,6 +9,14 @@ export default function LockScreen() {
   const router = useRouter();
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
+  const [username, setUsername] = useState("");
+
+  useEffect(() => {
+    fetch(`${API}/users/me`)
+      .then((r) => r.json())
+      .then((d) => { if (d.username) setUsername(d.username); })
+      .catch(() => {});
+  }, []);
 
 
   //sends the pin to backend for verification 
@@ -33,6 +41,9 @@ export default function LockScreen() {
   return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="ob-card w-72 text-center">
+        {username && (
+          <p className="text-muted text-sm mb-1">Welcome back, {username}</p>
+        )}
         <h1 className="text-2xl font-semibold mb-2">Enter PIN</h1>
 
         <input

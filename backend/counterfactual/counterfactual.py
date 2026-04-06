@@ -8,6 +8,7 @@ from sklearn.linear_model import LinearRegression
 from causal_data import get_monthly_panel, validate_data_sufficiency
 
 HISTORY_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "history.db")
+LIVE_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "live.db")
 
 ### USE CASE 1 ###
 
@@ -296,22 +297,37 @@ def _get_fixed_costs_avg():
 
 #fetches latest state of savings goals. (converts month into numbers like 202603 to find recent month)
 def _get_goal_state():
-    
+
     conn = sqlite3.connect(HISTORY_DB)
 
     rows = conn.execute("""
         SELECT g.goal_id, g.target_amount, g.amount_at_month_end
         FROM goal_history g
         INNER JOIN (
-            SELECT MAX(year * 100 + month) as latest FROM goal_history 
+            SELECT MAX(year * 100 + month) as latest FROM goal_history
         ) t ON (g.year * 100 + g.month) = t.latest
-                        
+
     """).fetchall()
 
     conn.close()
 
+    # look up pot names from live db
+    name_map = {}
+    try:
+        live_conn = sqlite3.connect(LIVE_DB)
+        live_rows = live_conn.execute("SELECT id, account_name FROM accounts WHERE account_type = 'pot'").fetchall()
+        live_conn.close()
+        name_map = {r[0]: r[1] for r in live_rows}
+    except Exception:
+        pass
+
     return [
-        {"goal_id": r[0], "target": r[1], "current_savings": r[2]}
+        {
+            "goal_id": r[0],
+            "name": name_map.get(r[0], r[0]),
+            "target": r[1],
+            "current_savings": r[2],
+        }
         for r in rows
     ]
 
@@ -436,6 +452,7 @@ def counterfactual_forecasting(
         goal_projections.append({
 
             "goal_id": g["goal_id"],
+            "name": g["name"],
             "target": g["target"],
             "current_savings": round(g["current_savings"], 2),
             "baseline_contribution": round(b_contrib, 2),
