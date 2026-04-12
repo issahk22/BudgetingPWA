@@ -206,25 +206,21 @@ export default function WhatIf() {
           )}
 
           {/* Counterfactual hour inputs */}
-          {(() => {
-            const minHistorical = historyMonths.length > 0
-              ? Math.min(...historyMonths.map((m) => parseFloat(m.hours_worked)))
-              : 0;
-            const minHours = Math.round((minHistorical * (2 / 3)) * 2) / 2; // round to nearest 0.5
-            return (
-              <div className="flex flex-col gap-2">
-                {shiftTypes.map((type) => (
-                  <label key={type} className="flex flex-col gap-1 text-sm text-muted">
-                    Counterfactual {formatType(type)} Hours
-                    <input type="number" required min={minHours} step="0.5" value={cfHours[type] || ""}
-                      onChange={(e) => setCfHours({ ...cfHours, [type]: e.target.value })}
-                      className="px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-                    <span className="text-xs text-muted">Min: {minHours}h (⅓ below your lowest month)</span>
-                  </label>
-                ))}
-              </div>
-            );
-          })()}
+          <div className="flex flex-col gap-2">
+            {shiftTypes.map((type) => {
+              const typeMin = sufficiency?.min_hours_by_type?.[type] ?? 0;
+              const minHours = Math.round((typeMin * (2 / 3)) * 2) / 2;
+              return (
+                <label key={type} className="flex flex-col gap-1 text-sm text-muted">
+                  Counterfactual {formatType(type)} Hours
+                  <input type="number" required min={minHours} step="0.5" value={cfHours[type] || ""}
+                    onChange={(e) => setCfHours({ ...cfHours, [type]: e.target.value })}
+                    className="px-3 py-2 bg-gray-700 border border-border rounded-lg text-text text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                  <span className="text-xs text-muted">Min: {minHours}h</span>
+                </label>
+              );
+            })}
+          </div>
 
           <button type="submit" disabled={hindsightLoading}
             className="w-full px-4 py-2 rounded-lg bg-accent text-white font-medium text-sm hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">

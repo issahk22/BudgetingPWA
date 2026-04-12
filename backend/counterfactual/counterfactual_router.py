@@ -28,12 +28,21 @@ def get_sufficiency():
     """Returns whether there is enough history to run counterfactual models."""
     panel, shift_types = get_monthly_panel()
     check = validate_data_sufficiency(panel, len(shift_types))
+
+    # min hours per shift type across all months (for input floor)
+    min_hours_by_type = {}
+    if panel and shift_types:
+        for st in shift_types:
+            values = [m["hours_by_type"].get(st, 0) for m in panel]
+            min_hours_by_type[st] = min(values) if values else 0
+
     return {
         "months_available":  check["months_available"],
         "minimum_required":  check["minimum_required"],
         "sufficient":        check["sufficient"],
         "n_shift_types":     len(shift_types),
         "error":             check.get("error"),
+        "min_hours_by_type": min_hours_by_type,
     }
 
 
