@@ -10,8 +10,22 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-primarypersona.txt
-backend/counterfactual/generate_synthetic_data.py
+# Next.js
+frontend/.next/
+frontend/out/
 
-# History store
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Databases
+*.db
+*.db-wal
+*.db-shm
+
+# Misc
+primarypersona.txt
+run.txt
 History store/
