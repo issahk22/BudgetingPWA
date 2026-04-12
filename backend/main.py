@@ -708,6 +708,73 @@ def get_goal_history(year: int, month: int, db: Session = Depends(get_history_db
 
 
 
+@app.get("/history/insights")
+def get_insights(db: Session = Depends(get_history_db), live_db: Session = Depends(get_db)):
+
+    # all month summaries chronologically
+    months = db.query(MonthSummary).order_by(MonthSummary.year, MonthSummary.month).all()
+
+    # all goal history chronologically
+    goals = db.query(GoalHistory).order_by(GoalHistory.year, GoalHistory.month).all()
+
+    # get pot deadline from live db for milestone calculation
+    pot = live_db.query(Account).filter(
+        Account.account_type == "pot", Account.target_amount.isnot(None)
+    ).first()
+
+    goal_data = []
+    if goals:
+        target = float(goals[0].target_amount)
+        first = goals[0]
+        start_abs = first.year * 12 + first.month  # absolute month number of first entry
+
+        # calculate total months from first entry to deadline
+        total_months = len(goals)  # fallback: just use how many months we have
+        if pot and pot.deadline:
+            parts = pot.deadline.split("-")  # "YYYY-MM-DD"
+            deadline_abs = int(parts[0]) * 12 + int(parts[1])
+            total_months = max(1, deadline_abs - start_abs + 1)
+
+        for r in goals:
+            current_abs = r.year * 12 + r.month
+            position = current_abs - start_abs + 1  # 1-based month index
+            milestone = round(target * position / total_months, 2)
+            goal_data.append({
+                "label": f"{r.month:02d}/{r.year}",
+                "target": milestone,
+                "saved": float(r.amount_at_month_end),
+            })
+
+    # envelope history for the latest month only
+    latest = months[-1] if months else None
+    envelopes = []
+    if latest:
+        envelopes = db.query(EnvelopeHistory).filter(
+            EnvelopeHistory.month == latest.month,
+            EnvelopeHistory.year == latest.year,
+        ).all()
+
+    return {
+        "months": [
+            {
+                "label": f"{r.month:02d}/{r.year}",
+                "income": float(r.actual_net_income),
+                "spending": float(r.total_spent),
+            }
+            for r in months
+        ],
+        "goals": goal_data,
+        "envelopes": [
+            {
+                "name": r.envelope_name,
+                "allocated": float(r.allocated_amount),
+                "spent": float(r.actual_spent),
+            }
+            for r in envelopes
+        ],
+    }
+
+
 ##-----Month Close-----##
 
 class MonthCloseRequest(BaseModel):

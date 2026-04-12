@@ -8,6 +8,7 @@ export default function Sidebar() {
 
   const links = [
     { href: "/dashboard", label: "Dashboard" },
+    { href: "/insights", label: "Insights" },
     { href: "/history", label: "History" },
     { href: "/whatif", label: "What If" },
   ];
@@ -15,7 +16,7 @@ export default function Sidebar() {
   return (
     <aside className="flex flex-col h-screen w-56 bg-gray-950 border-r border-border fixed top-0 left-0">
       <div className="px-5 py-6 text-lg font-bold text-accent tracking-wide">
-        BudgetPWA
+        Fulus
       </div>
 
       <nav className="flex flex-col gap-1 px-3">

@@ -655,6 +655,16 @@ export default function Dashboard() {
   }
 
 
+  async function handleDeleteShift(shift) {
+    try {
+      await fetch(`${API}/shifts/${shift.shift_id}`, { method: "DELETE" });
+      setShifts((prev) => prev.filter((s) => s.shift_id !== shift.shift_id));
+    } catch (err) {
+      console.error("Failed to delete shift:", err);
+    }
+  }
+
+
   async function handleDeleteTransaction(tx) {
     try {
       await fetch(`${API}/transactions/${tx.id}`, { method: "DELETE" });
@@ -1017,6 +1027,8 @@ export default function Dashboard() {
                 totalMonthlyPay={totalMonthlyPay}
                 getJobName={getJobName}
                 formatShiftType={formatShiftType}
+                onAddShift={() => setShowShiftForm(true)}
+                onDeleteShift={handleDeleteShift}
               />
 
             </div>

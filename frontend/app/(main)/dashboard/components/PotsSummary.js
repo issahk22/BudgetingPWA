@@ -7,15 +7,19 @@ export default function PotsSummary({ accounts, openAccountLogs, onToggle, getAc
   const totalPotBalance = pots.reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
   const hasGoals = pots.some((p) => p.target_amount);
 
+  const RING_SIZE = 68;
+  const STROKE = 6;
+  const RADIUS = (RING_SIZE - STROKE) / 2;
+  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
   return (
     <Card className="w-full">
-      <div className="flex justify-between items-center mb-1">
+      <div className="flex justify-between items-center mb-3">
         <h2 className="text-text">Pots</h2>
         {hasGoals && (
           <button onClick={onManage} className="text-xs text-muted hover:text-accent transition-colors">Edit</button>
         )}
       </div>
-      <p className="text-2xl font-bold text-white mb-3">£{totalPotBalance.toFixed(2)}</p>
 
       {pots.length === 0 ? <p className="text-sm text-muted">No pots found.</p> : (
         <ul className="space-y-0">
@@ -24,40 +28,48 @@ export default function PotsSummary({ accounts, openAccountLogs, onToggle, getAc
             const accTransfers = getAccountTransfers(acc.id);
             const target = acc.target_amount ? parseFloat(acc.target_amount) : null;
             const progressPct = target && target > 0 ? Math.min(100, (parseFloat(acc.balance) / target) * 100) : null;
+            const dashOffset = progressPct !== null ? CIRCUMFERENCE * (1 - progressPct / 100) : CIRCUMFERENCE;
             return (
               <li key={acc.id}>
                 <div
-                  className="flex justify-between items-center py-2 border-b border-gray-700 cursor-pointer hover:bg-gray-700/30 transition-colors"
+                  className="flex items-center gap-3 py-2 border-b border-gray-700 cursor-pointer hover:bg-gray-700/30 transition-colors"
                   onClick={() => onToggle(acc.id)}
                 >
-                  <span className="text-sm text-text flex-1 min-w-0 pr-2">
+                  {/* donut ring */}
+                  {progressPct !== null && (
+                    <svg width={RING_SIZE} height={RING_SIZE} className="shrink-0">
+                      <circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS}
+                        fill="none" stroke="#374151" strokeWidth={STROKE} />
+                      <circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS}
+                        fill="none" stroke="#00BBA8" strokeWidth={STROKE}
+                        strokeDasharray={CIRCUMFERENCE} strokeDashoffset={dashOffset}
+                        strokeLinecap="round"
+                        transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`} />
+                      <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central"
+                        fill="#f9fafb" fontSize="12" fontWeight="600">
+                        {Math.round(progressPct)}%
+                      </text>
+                    </svg>
+                  )}
+
+                  <span className="text-sm text-text flex-1 min-w-0">
                     {acc.account_name}
                     {target && (
-                      <span className="block text-xs text-muted mt-0.5">
-                        Goal: £{parseFloat(acc.balance).toFixed(2)} / £{target.toFixed(2)}
+                      <span className="block text-sm text-gray-300 mt-0.5">
+                        £{parseFloat(acc.balance).toFixed(2)} / £{target.toFixed(2)}
                         {acc.monthly_contribution && (
                           <span className="ml-2 text-accent">· £{parseFloat(acc.monthly_contribution).toFixed(2)}/mo</span>
                         )}
                         {acc.deadline && (
-                          <span className="ml-1">· by {acc.deadline}</span>
+                          <span className="ml-1 text-gray-400">· by {acc.deadline}</span>
                         )}
                       </span>
                     )}
                   </span>
                   <span className="text-sm text-text font-medium whitespace-nowrap">
-                    £{parseFloat(acc.balance).toFixed(2)} <span className="text-xs text-muted">{isOpen ? "▲" : "▼"}</span>
+                    £{parseFloat(acc.balance).toFixed(2)} <span className="text-xs text-gray-400">{isOpen ? "▲" : "▼"}</span>
                   </span>
                 </div>
-
-                {/* progress bar for pots with a goal */}
-                {progressPct !== null && (
-                  <div className="w-full h-1 bg-gray-700 rounded-full overflow-hidden mt-1 mb-1">
-                    <div
-                      className="h-full bg-accent transition-all"
-                      style={{ width: `${progressPct}%` }}
-                    />
-                  </div>
-                )}
 
                 {isOpen && (
                   <div className="pl-3 mt-2 mb-2 border-l-2 border-border">
