@@ -9,14 +9,14 @@ A personal budgeting web app built around envelope budgeting, shift income track
 - **Envelope budgeting** - allocate income into spending categories each month
 - **Shift tracking** - log shifts by job and type, gross predicted income is calculated automatically
 - **Savings pots** - set a target and deadline, track progress on dashboard
-- **What If analysis** — hindsight counterfactuals and income forecasting using OLS + Monte Carlo simulation
-- **Insights** — charts for income vs spending, savings progress, and envelope breakdown
+- **What If analysis** - hindsight counterfactuals and income forecasting using OLS + Monte Carlo simulation
+- **Insights** - charts for income vs spending, savings progress, and envelope breakdown
 
 ## Tech Stack
 
-**Frontend** — Next.js 16, React 19, Tailwind CSS v4, Recharts  
-**Backend** — FastAPI, SQLAlchemy, SQLite  
-**ML** — scikit-learn (OLS linear regression), NumPy
+**Frontend** - Next.js 16, React 19, Tailwind CSS v4, Recharts  
+**Backend** - Python, FastAPI, SQLAlchemy, SQLite  
+**ML** - scikit-learn (OLS linear regression), NumPy
 
 ## Getting Started
 
@@ -43,9 +43,7 @@ Runs on `http://localhost:3000`
 
 Onboarding must be completed to run the application. 
 
-I have added 2 preloaded databases with test data in the test data folder. Live.db and History.db. Place these into the backend folder and delete any existing databases if there are any in that folder. Re run the app and you can see the app as if 8 months of data has been completed. 
 
-THE PIN FOR THE TEST DATA IS 1234
 
 
 
@@ -61,7 +59,7 @@ Envelopes MUST be consistent throughout 6 months to get good outputs from the co
 
 Every closed month must have shifts logged.
 
-Shift type names must stay consistent
+Shift type names must stay consistent for the machine learning and counterfactual models to work. 
 
 
 ## Project Structure

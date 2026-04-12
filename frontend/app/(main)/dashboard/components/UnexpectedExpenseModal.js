@@ -13,8 +13,7 @@ export default function UnexpectedExpenseModal({ envelopes, accounts, onSubmit, 
   //how much is left to budget (unallocated money sitting in the bank account)
   const bankAccount = accounts.find((a) => a.include_in_budget);
   const bankBalance = bankAccount ? parseFloat(bankAccount.balance) : 0;
-  const totalEnvelopeBalance = envelopes.reduce((s, e) => s + parseFloat(e.balance), 0);
-  const leftToBudget = Math.round((bankBalance - totalEnvelopeBalance) * 100) / 100;
+  const leftToBudget = Math.round(bankBalance * 100) / 100;
 
   const totalFromEnvelopes = Object.values(envAmounts).reduce((s, v) => s + (parseFloat(v) || 0), 0);
   const totalFromUnbudgeted = parseFloat(unbudgetedAmount) || 0;
